@@ -33,7 +33,7 @@ android {
 }
 
 dependencies {
-
+    implementation 'com.github.mik3y:usb-serial-for-android:3.5.1'
     implementation 'androidx.core:core-ktx:1.8.0'
     implementation 'androidx.appcompat:appcompat:1.4.1'
     implementation 'com.google.android.material:material:1.5.0'
