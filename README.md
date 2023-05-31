@@ -33,23 +33,6 @@ dependencies {
 
 Ещё раз выполнил операцию "Sync now" и убедился, что сборка проекта прошла успешно. ВНИМАНИЕ! Синхронизацию необходимо обязательно выполнить, т.к. если этого не сделать, то Android Studio не загрузит зависимость и проект не будет собираться.
 
-В инструкции на сайте mik3y указано, что если приложение хочет получать уведомления о том, что USB-устройство было подключено, то следует добавить файл "device_filter.xml" в ваш проекта, в папку "res/xml/" и настроить "AndroidManifest.xml":
-
-```
-<activity
-    android:name="..."
-    ...>
-    <intent-filter>
-        <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
-    </intent-filter>
-    <meta-data
-        android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
-        android:resource="@xml/device_filter" />
-</activity>
-```
-
-Однако, я пока не озаботился подобным функционалом.
-
 ## Разработка кода
 
 Если удасться подключить библиотеку, то следующим этапом можно попробовать получить список драйверов для всех подключенных устройств (их может быть несколько, если используется USB Hub), а затем открыть соединение с первым из них:
@@ -105,9 +88,41 @@ class MainActivity : ComponentActivity() {
         val port = driver.ports[0] // Most devices have just one port (port 0)
 ```
 
+## Добавление нотификации о подключенном приборе
+
+В инструкции на сайте mik3y указано, что если приложение хочет получать уведомления о том, что USB-устройство было подключено, то следует добавить файл [device_filter.xml](https://github.com/mik3y/usb-serial-for-android/blob/master/usbSerialExamples/src/main/res/xml/device_filter.xml) в проект, в папку "/src/main/res/xml/", а также добавить в файл "AndroidManifest.xml" ссылку на intent-filter подключения конкретного USB-устройства к мобильному телефону:
+
+```
+<activity
+    android:name="..."
+    ...>
+    <intent-filter>
+        <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+    </intent-filter>
+    <meta-data
+        android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+        android:resource="@xml/device_filter" />
+</activity>
+```
+
+В дополнение к содержимому файла "device_filter.xml" я добавил ещё одну строку с указанием pid/vid, который возвращает Raspberry Pi Pico, на который установлен bootloader CircuitPython:
+
+``` xml
+<usb-device vendor-id="9114" product-id="33012" /> <!-- 0x239a / 0x80f4 Adafruit Pico CircuitPython -->
+```
+
+Указанные pid/vid были получены при подключении Pico к персональному компьютеру, работающему под Ubunte Mate 22.04:
+
+``` console
+developer@atmcheck:~$ lsusb
+Bus 002 Device 004: ID 239a:80f4 Adafruit Pico
+```
+
+После компиляции и установки приложения на мобильный телефон, при подключении микроконтроллера Pi Pico, на экране телефона появляется всплывающее окно с текстом "Запустить Android USB CDC при подключении этого устройства?". Если нажать кнопку "OK", то будет запущено наше приложение и ему будет предоставлено право обмениваться данными по USB, без дополнительной настройки прав.
+
 ### Физическое подключение Pico к телефону
 
-Попытка подключения Raspberry Pi Pico завершилась обнаружением подключенного Pico. Тем не менее, два условия должны быть выполнены":
+Попытка подключения Raspberry Pi Pico завершилась обнаружением подключенного Pico. Тем не менее, два условия должны быть выполнены:
 
 - микроконтроллер Pico должен активировать USB CDC. Что можно сделать установив Bootloader-а CircuitPython и добавив файл boot.py
 - подключив OTG-кабель к телефону, а не к Pico
@@ -125,35 +140,17 @@ usb_cdc.enable(console=True, data=True)
 
 ID соединён с GROUND и по этому признаку, телефон понимает, что он должен работать в режиме клиента, а не Host-а.
 
-Исходя из истории изменений библиотеки, поддержка pid/vid для Raspberry Pi Pico была добавлена в Master-branch (v3.4.5) год назад:
+Работоспособность OTG-кабеля можно проверить подключив к телефону USB-флешку.
 
-``` xml
-<usb-device vendor-id="11914" product-id="5"   /> <!-- 0x2E8A / 0x0005: Raspberry Pi Pico Micropython -->
-<usb-device vendor-id="11914" product-id="10"  /> <!-- 0x2E8A / 0x000A: Raspberry Pi Pico SDK -->
-```
+### Малозначимые замечания
 
-Однако, эти параметры указаны в файле "/res/xml/device_filter.xml", которого нет в моём приложении.
-
-Заметим, что в случае установки Bootloader-а AdaFruit, vendor-id = 0x239a, а product-id = 0x80f4:
-
-``` console
-developer@atmcheck:~$ lsusb
-Bus 002 Device 004: ID 239a:80f4 Adafruit Pico
-```
-
-Работоспособность OTG-кабеля проверил подключением к телефону USB-флешки.
-
-Важно заметить, что для обеспечения работоспособности решения, следует подключить OTG в телефон, а обычный microUSB-кабель в Raspberry PI Pico. Для получения информации о подключенном устройстве в приложение был добавлен следующий код:
+Для получения информации о подключенном устройстве в приложение был добавлен следующий код:
 
 ``` kotlin
 val message = "pid = ${driver.device.productId}, vid =  ${driver.device.vendorId}, Name = ${driver.device.deviceName}"
 ```
 
-И при подключении Pico было получено сообщение: pid = 33012, vid = 9114, Name = `/dev/bus/usb/001/002!`. 33012 = 0x80F4, 9114 = 0x239A. Мы определённо увидели, что Raspberry Pi Pico подключен к телефону. Следующая задача, которую нужно решить - запросить у пользователя разрешение взаимодействовать с подключенным микроконтроллером.
-
-## Добавление необходимых разрешений (Permissions)
-
-...
+При подключении Pico было получено сообщение: pid = 33012, vid = 9114, Name = `/dev/bus/usb/001/002!`.
 
 ## Что ещё можно почитать об этой библиотеке
 
@@ -161,7 +158,7 @@ val message = "pid = ${driver.device.productId}, vid =  ${driver.device.vendorId
 
 Статья японского разработчика, который решал подобную задачу: https://qiita.com/hiro-han/items/78b226b35174106259cd
 
-Следует заметить, что оба разработчика (и польского, и японского) использовали "device_filter.xml". Например, в варианте японца это было:
+Следует заметить, что оба разработчика (и польского, и японского) использовали "device_filter.xml". Например, японский разработчик подключал только Raspberry Pi Pico:
 
 ``` xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -176,11 +173,4 @@ val message = "pid = ${driver.device.productId}, vid =  ${driver.device.vendorId
 <uses-feature android:name="android.hardware.usb.host" />
 <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
 <meta-data android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" android:resource="@xml/device_filter" />
-```
-
-Получить pid и vid прибора можно следующим образом:
-
-``` java
-usb_driver_.getDevice().getVendorId() // Pico : 11914
-usb_driver_.getDevice().getProductId() // Pico : 10
 ```
