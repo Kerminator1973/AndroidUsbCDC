@@ -154,7 +154,7 @@ val message = "pid = ${driver.device.productId}, vid =  ${driver.device.vendorId
 
 ## Что ещё можно почитать об этой библиотеке
 
-Можно ещё почитать статью: https://forbot.pl/forum/topic/19927-komunikacja-raspberry-pi-pico-z-aplikacja-na-androida-poprzez-przewod-usb-cjava/
+Можно ещё почитать [статью разработчика из Польши](https://forbot.pl/forum/topic/19927-komunikacja-raspberry-pi-pico-z-aplikacja-na-androida-poprzez-przewod-usb-cjava/) в которой используется DTR и RTS. Код, приведённой в этой статье позволил считать какую-то информацию из порта, но, наиболее вероятно, что это был REPL.
 
 Статья японского разработчика, который решал подобную задачу: https://qiita.com/hiro-han/items/78b226b35174106259cd
 

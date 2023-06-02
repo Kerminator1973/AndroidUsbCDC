@@ -33,7 +33,7 @@ class MainActivity : AppCompatActivity() {
                     manager as UsbManager?
                 )
                 if (availableDrivers.isEmpty()) {
-                    message.text = "No driver available"
+                    "No driver available".also { message.text = it }
                     return
                 }
 
@@ -50,7 +50,7 @@ class MainActivity : AppCompatActivity() {
                     return
                 }
 
-                message.text = "Has connection..."
+                "Has connection...".also { message.text = it }
 
                 // Подключаемся к устройству
                 val port = driver.ports[1] // Most devices have just one port (port 0)
@@ -59,16 +59,16 @@ class MainActivity : AppCompatActivity() {
                     port.open(connection)
                     port.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
 
-                    message.text = "Opened..."
+                    "Opened...".also { message.text = it }
                     // Sygnał Data Terminal Ready - Pico i Android rozpocznął komunikację
-                    // Терминал данных сигналов готов — Pico и Android начали обмен данными
-                    port.dtr = true;
+                    // Сигнал готовности терминала: Pico и Android начанают обмен данными
+                    port.dtr = true
                     // Sygnał Request To Send - wymaga go np. Arduino do rozpoczęcia komunikacji z Androidem
                     // Request To Send signal — требует его, например, Arduino для начала связи с Android
-                    port.rts = true;
+                    port.rts = true
                 } catch (exception: Exception) {
 
-                    message.text = "Exception..."
+                    "Exception...".also { message.text = it }
                 }
                 //val WRITE_WAIT_MILLIS = 500
                 //val READ_WAIT_MILLIS = 500
@@ -92,7 +92,7 @@ class MainActivity : AppCompatActivity() {
                 serialInputOutputManager!!.readTimeout = 0
                 // Definicja pozyższego obiektu jako oddzielnego wątku programu...
                 // Определение вышеуказанного объекта как отдельного потока программы...
-                var rx = Executors.newSingleThreadExecutor()
+                val rx = Executors.newSingleThreadExecutor()
                 // ...i jego uruchomienie
                 // и его запуск
                 rx.submit(serialInputOutputManager)
