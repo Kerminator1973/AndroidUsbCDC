@@ -88,7 +88,7 @@ class MainActivity : ComponentActivity() {
         val port = driver.ports[0] // Most devices have just one port (port 0)
 ```
 
-## Добавление нотификации о подключенном приборе
+## Обработка события о подключении устройства к телефону. Предоставление прав работы с ним
 
 В инструкции на сайте mik3y указано, что если приложение хочет получать уведомления о том, что USB-устройство было подключено, то следует добавить файл [device_filter.xml](https://github.com/mik3y/usb-serial-for-android/blob/master/usbSerialExamples/src/main/res/xml/device_filter.xml) в проект, в папку "/src/main/res/xml/", а также добавить в файл "AndroidManifest.xml" ссылку на intent-filter подключения конкретного USB-устройства к мобильному телефону:
 
@@ -142,7 +142,7 @@ ID соединён с GROUND и по этому признаку, телефо�
 
 Работоспособность OTG-кабеля можно проверить подключив к телефону USB-флешку.
 
-### Малозначимые замечания
+### Вспомогательные функции
 
 Для получения информации о подключенном устройстве в приложение был добавлен следующий код:
 
@@ -151,6 +151,59 @@ val message = "pid = ${driver.device.productId}, vid =  ${driver.device.vendorId
 ```
 
 При подключении Pico было получено сообщение: pid = 33012, vid = 9114, Name = `/dev/bus/usb/001/002!`.
+
+Выполнить преобразование массива байт в hex-строку можно с помощью следующей функции:
+
+``` kt
+fun ByteArray.toHex(): String = joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }
+```
+
+## Обмен данными с Raspberry Pico
+
+В демонстрационном приложении, подключение к микроконтроллеру осуществляется при нажатии на экранную кнопку:
+
+``` kotlin
+val button = findViewById<Button>(R.id.button)
+button.setOnClickListener(object : View.OnClickListener {
+    override fun onClick(v: View?) {
+        ...
+    }
+})
+```
+
+При физическом подключении Raspberry Pi Pico, телефон видит только один драйвер - `/dev/bus/usb/001/002`:
+
+``` kt
+if (availableDrivers.isEmpty()) {
+	"No driver available".also { message.text = it }
+	return
+}
+
+message.text = "Drivers: ${availableDrivers.size}\n"
+
+for (item in availableDrivers) {
+	message.append(item.device.deviceName)
+	message.append("\n")
+}
+```
+
+Но портов у этого драйвера два: нулевой порт используется для REPL (Write endpoint: 2, Read Endpoint: 130), а первый порт - USB CDC (Write endpoint: 4, Read Endpoint: 132). Логирование может быть выполнено таким образом:
+
+``` kt
+port.open(connection)
+
+if (port.writeEndpoint != null) {
+    message.append("  Write Endpoint: ${port.writeEndpoint.address}")
+}
+
+if (port.readEndpoint != null) {
+    message.append("  Read Endpoint: ${port.readEndpoint.address}")
+}
+
+if (port.serial != null) {
+    message.append("  Serial: ${port.serial}")
+}
+```
 
 ## Что ещё можно почитать об этой библиотеке
 
