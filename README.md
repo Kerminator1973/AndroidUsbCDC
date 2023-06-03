@@ -205,9 +205,81 @@ if (port.serial != null) {
 }
 ```
 
+В качестве основы кода для обмена данными с Pico, был использован код из [статьи разработчика из Польши](https://forbot.pl/forum/topic/19927-komunikacja-raspberry-pi-pico-z-aplikacja-na-androida-poprzez-przewod-usb-cjava/). Особенности кода:
+
+- используются DTR и RTS
+- взаимодействие с микроконтроллером осуществляется из рабочего потока
+- обрабатывается не только событие подключения устройства, но и его отключение
+
+### Использование DTR и RTS
+
+``` kt
+port.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
+
+// Сигнал готовности терминала: Pico и Android начинают обмен данными
+port.dtr = true
+// Request To Send signal — возведение это сигнала необходимо для начала 
+// обмена данными между Arduino/Pico и Android
+port.rts = true
+```
+
+### Обработчик данных, полученных от микроконтроллера
+
+В моём приложении, полученные данные от микроконтроллера добавляются к строке с текстом (textView):
+
+``` kt
+val serialInputOutputListener: SerialInputOutputManager.Listener =
+    object : SerialInputOutputManager.Listener {
+        override fun onRunError(ignored: Exception) {}
+        override fun onNewData(data: ByteArray) {
+            runOnUiThread {
+                val textView = findViewById<TextView>(R.id.connection_msg)
+                textView.append(data.toHex())
+            }
+        }
+    }
+```
+
+Запуск потока осуществляется следующим образом:
+
+``` kt
+serialInputOutputManager =
+    SerialInputOutputManager(port, serialInputOutputListener)
+serialInputOutputManager!!.readTimeout = 0
+// Обработка сообщений от микроконтроллера будет осуществляться в отдельном потоке
+val rx = Executors.newSingleThreadExecutor()
+rx.submit(serialInputOutputManager)
+```
+
+### Отправка контроллеру команды
+
+Отправить команду контроллеру можно следующим образом:
+
+``` kt
+try {
+    val request = ubyteArrayOf(0x02U, 0x03U, 0x06U, 0x37U, 0xFEU, 0xC7U).toByteArray()
+    port.write(request, 0)
+} catch (ignored: java.lang.Exception) {
+}
+```
+
+Если мы хотим выполнять команду систематически, например, для получения состояния какого-то объекта, мы можем использовать планировщик:
+
+``` kt
+var co100Ms = Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate({
+    try {
+        val request = ubyteArrayOf(0x02U, 0x03U, 0x06U, 0x37U, 0xFEU, 0xC7U).toByteArray()
+        port.write(request, 0)
+    } catch (ignored: java.lang.Exception) {
+    }
+}, 0, 500, TimeUnit.MILLISECONDS)
+```
+
+Следует заметить, что при отключении устройства, планировщик должен быть остановлен, для чего используется co100Ms.
+
 ## Что ещё можно почитать об этой библиотеке
 
-Можно ещё почитать [статью разработчика из Польши](https://forbot.pl/forum/topic/19927-komunikacja-raspberry-pi-pico-z-aplikacja-na-androida-poprzez-przewod-usb-cjava/) в которой используется DTR и RTS. Код, приведённой в этой статье позволил считать какую-то информацию из порта, но, наиболее вероятно, что это был REPL.
+ в которой используется DTR и RTS. Код, приведённой в этой статье позволил считать какую-то информацию из порта, но, наиболее вероятно, что это был REPL.
 
 Статья японского разработчика, который решал подобную задачу: https://qiita.com/hiro-han/items/78b226b35174106259cd
 

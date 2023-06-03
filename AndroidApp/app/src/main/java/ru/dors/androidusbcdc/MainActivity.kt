@@ -57,26 +57,12 @@ class MainActivity : AppCompatActivity() {
                 try {
                     port.open(connection)
 
-                    if (port.writeEndpoint != null) {
-                        message.append("  Write Endpoint: ${port.writeEndpoint.address}")
-                    }
-
-                    if (port.readEndpoint != null) {
-                        message.append("  Read Endpoint: ${port.readEndpoint.address}")
-                    }
-
-                    if (port.serial != null) {
-                        message.append("  Serial: ${port.serial}")
-                    }
-
                     port.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
 
-                    //"Opened...".also { message.text = it }
-                    // Sygnał Data Terminal Ready - Pico i Android rozpocznął komunikację
-                    // Сигнал готовности терминала: Pico и Android начанают обмен данными
+                    // Сигнал готовности терминала: Pico и Android начинают обмен данными
                     port.dtr = true
-                    // Sygnał Request To Send - wymaga go np. Arduino do rozpoczęcia komunikacji z Androidem
-                    // Request To Send signal — требует его, например, Arduino для начала связи с Android
+                    // Request To Send signal — возведение это сигнала необходимо для начала
+                    // обмена данными между Arduino/Pico и Android
                     port.rts = true
                 } catch (exception: Exception) {
 
@@ -97,14 +83,10 @@ class MainActivity : AppCompatActivity() {
                 serialInputOutputManager =
                     SerialInputOutputManager(port, serialInputOutputListener)
                 serialInputOutputManager!!.readTimeout = 0
-                // Definicja pozyższego obiektu jako oddzielnego wątku programu...
-                // Определение выше указанного объекта как отдельного потока программы...
+                // Обработка сообщений от микроконтроллера будет осуществляться в отдельном потоке
                 val rx = Executors.newSingleThreadExecutor()
-                // ...i jego uruchomienie
-                // и его запуск
                 rx.submit(serialInputOutputManager)
-                // Zdefiniowanie osobnego wątku, który będzie wywoływał się do 100 ms wysyłając
-                // porcję danych
+
                 // Запускаем отдельный поток, который будет отправлять в устройство одну и
                 // ту же команду каждый 500 мс
                 //var co100Ms = Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate({
@@ -114,10 +96,9 @@ class MainActivity : AppCompatActivity() {
                     } catch (ignored: java.lang.Exception) {
                     }
                 //}, 0, 500, TimeUnit.MILLISECONDS)
-/*
 
-                port.close();
- */
+                // TODO: когда закрывать порт?
+                //port.close();
             }
         })
     }
