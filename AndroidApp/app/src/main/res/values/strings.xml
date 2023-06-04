@@ -6,5 +6,7 @@
     <string name="textview_no_information">No information</string>
     <string name="textview_not_detected">Not detected</string>
     <string name="textview_undefined">Undefined</string>
-    <string name="textview_driver_unavailable">Driver unavailable</string>
+    <string name="text_driver_unavailable">Driver unavailable</string>
+    <string name="text_need_permission">No connection. Possible, need permissions</string>
+    <string name="text_exception">An exception happens</string>
 </resources>

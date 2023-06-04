@@ -33,7 +33,7 @@ class MainActivity : AppCompatActivity() {
                     manager as UsbManager?
                 )
                 if (availableDrivers.isEmpty()) {
-                    "The driver is unavailable".also { message.text = it }
+                    message.text = getString(R.string.text_driver_unavailable);
                     return
                 }
 
@@ -51,7 +51,7 @@ class MainActivity : AppCompatActivity() {
                 if (connection == null) {
 
                     // Possibly, need permissions
-                    "No connection. Possible, need permissions".also { message.text = it }
+                    message.text = getString(R.string.text_need_permission);
 
                     // add UsbManager.requestPermission(driver.getDevice(), ..) handling here
                     return
@@ -71,8 +71,7 @@ class MainActivity : AppCompatActivity() {
                     // обмена данными между Arduino/Pico и Android
                     port.rts = true
                 } catch (exception: Exception) {
-
-                    "Exception...".also { message.text = it }
+                    message.text = getString(R.string.text_exception);
                 }
 
                 val serialInputOutputListener: SerialInputOutputManager.Listener =
@@ -107,14 +106,6 @@ class MainActivity : AppCompatActivity() {
                 //port.close();
             }
         })
-    }
-
-    // При уничтожении Activity, отписываемся от подписки на события и останавливаем
-    // код, обрабатывающий поступающие от микроконтроллера данные
-    override fun onDestroy() {
-        //serialInputOutputManager!!.stop()
-        //unregisterReceiver(broadcastReceiver)
-        super.onDestroy()
     }
 
     fun ByteArray.toHex(): String = joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }
