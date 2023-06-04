@@ -1,14 +1,74 @@
-# Доступ к USB CDC в Android
+# Доступ к внешним устройствам в ОС Android через USB CDC
 
-Задача: подключить USB-устройство к Android-телефону по OTG.
+Задача: подключить USB-устройство к Android-телефону по OTG. Для исследования был выбран микроконтроллер Raspberry Pi Pico.
 
-Стартовая статья: https://github.com/Kerminator1973/RPIDev/blob/main/androidOTG.md
+Обязательным условием решения задачи является поддержка телефоном OTG. Проверить поддержку можно используя утилиту "OTG Checker" от FaitAuJapon.com, которую можно загрузить с Google Play. На тестовом телефоне - Redmi 5A поддержка OTG присутствует. Альтернативная проверка - использование OTG-кабеля для подключения flash-диска.
 
-Начальное приложение было сгенерировано посредством Android Studio 2022.2.1. В качестве базового языка программирования был выбран Kotlin, как более синтаксически привлекательный, выразительный и компактный. Google рекомендует использовать его, а не Java.
+Для работы с внешним устройством рекомендуется использовать Java-библиотеку от [mik3y](https://github.com/mik3y/usb-serial-for-android). На эту библиотеку ссылается sandworm в статье [Работа с устройствами USB в Android](https://habr.com/ru/articles/277093/) на Habr.com.
 
-Первое, что следует попробовать - подключить к репозитарию библиотеку от [Mik3y](https://github.com/mik3y/usb-serial-for-android) и определить, есть ли подключенное USB-устройство, или нет.
+Для исследования взаимодействия с USB-приборами с Android, в статье [How to communicate with Android through USB interface on nRF52820 / nRF52833 / nRF52840](https://jimmywongiot.com/2020/04/21/how-to-communicate-with-android-through-usb-interface-on-nrf52820-nrf52833-nrf52840/) рекомендуется использовать утилиту SimpleUsbTerminal от Kai Morich.
+
+На сайте [USB Serial for Android](https://github.com/mik3y/usb-serial-for-android/tree/master/usbSerialExamples/src/main/java/com/hoho/android/usbserial) есть пример кода на Java, который демонстрирует использование библиотеки mik3y.
+
+Следует заменить, что в примере приложения sbSerialExamples есть файл `\usbSerialExamples\src\main\res\xml\device_filter.xml`, в котором содержится список поддерживаемых USB-мостов:
+
+``` xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 0x0403 / 0x60??: FTDI -->
+    <usb-device vendor-id="1027" product-id="24577" /> <!-- 0x6001: FT232R -->
+    <usb-device vendor-id="1027" product-id="24592" /> <!-- 0x6010: FT2232H -->
+    <usb-device vendor-id="1027" product-id="24593" /> <!-- 0x6011: FT4232H -->
+    <usb-device vendor-id="1027" product-id="24596" /> <!-- 0x6014: FT232H -->
+    <usb-device vendor-id="1027" product-id="24597" /> <!-- 0x6015: FT230X, FT231X, FT234XD -->
+
+    <!-- 0x10C4 / 0xEA??: Silabs CP210x -->
+    <usb-device vendor-id="4292" product-id="60000" /> <!-- 0xea60: CP2102 and other CP210x single port devices -->
+    <usb-device vendor-id="4292" product-id="60016" /> <!-- 0xea70: CP2105 -->
+    <usb-device vendor-id="4292" product-id="60017" /> <!-- 0xea71: CP2108 -->
+
+    <!-- 0x067B / 0x23?3: Prolific PL2303x -->
+    <usb-device vendor-id="1659" product-id="8963" /> <!-- 0x2303: PL2303HX, HXD, TA, ... -->
+    <usb-device vendor-id="1659" product-id="9123" /> <!-- 0x23a3: PL2303GC -->
+    <usb-device vendor-id="1659" product-id="9139" /> <!-- 0x23b3: PL2303GB -->
+    <usb-device vendor-id="1659" product-id="9155" /> <!-- 0x23c3: PL2303GT -->
+    <usb-device vendor-id="1659" product-id="9171" /> <!-- 0x23d3: PL2303GL -->
+    <usb-device vendor-id="1659" product-id="9187" /> <!-- 0x23e3: PL2303GE -->
+    <usb-device vendor-id="1659" product-id="9203" /> <!-- 0x23f3: PL2303GS -->
+
+    <!-- 0x1a86 / 0x?523: Qinheng CH34x -->
+    <usb-device vendor-id="6790" product-id="21795" /> <!-- 0x5523: CH341A -->
+    <usb-device vendor-id="6790" product-id="29987" /> <!-- 0x7523: CH340 -->
+
+    <!-- CDC driver -->
+    <usb-device vendor-id="9025" />                   <!-- 0x2341 / ......: Arduino -->
+    <usb-device vendor-id="5824" product-id="1155" /> <!-- 0x16C0 / 0x0483: Teensyduino  -->
+    <usb-device vendor-id="1003" product-id="8260" /> <!-- 0x03EB / 0x2044: Atmel Lufa -->
+    <usb-device vendor-id="7855" product-id="4"    /> <!-- 0x1eaf / 0x0004: Leaflabs Maple -->
+    <usb-device vendor-id="3368" product-id="516"  /> <!-- 0x0d28 / 0x0204: ARM mbed -->
+    <usb-device vendor-id="1155" product-id="22336" /><!-- 0x0483 / 0x5740: ST CDC -->
+    <usb-device vendor-id="11914" product-id="5"   /> <!-- 0x2E8A / 0x0005: Raspberry Pi Pico Micropython -->
+    <usb-device vendor-id="11914" product-id="10"  /> <!-- 0x2E8A / 0x000A: Raspberry Pi Pico SDK -->
+    <usb-device vendor-id="6790" product-id="21972" /><!-- 0x1A86 / 0x55D4: Qinheng CH9102F -->
+</resources>
+```
+
+Если USB-моста в этом списке нет, то можно попытаться подключить устройство, указав его pid и vid:
+
+``` java
+// Probe for our custom FTDI device, which use VID 0x1234 and PID 0x0001 and 0x0002.
+ProbeTable customTable = new ProbeTable();
+customTable.addProduct(0x1234, 0x0001, FtdiSerialDriver.class);
+customTable.addProduct(0x1234, 0x0002, FtdiSerialDriver.class);
+
+UsbSerialProber prober = new UsbSerialProber(customTable);
+List<UsbSerialDriver> drivers = prober.findAllDrivers(usbManager);
+// ...
+```
 
 ## Подключение библиотеки
+
+Начальное приложение было сгенерировано посредством [Android Studio](https://developer.android.com/studio) 2022.2.1. В качестве базового языка программирования был выбран Kotlin, как более синтаксически привлекательный, выразительный и компактный. Google рекомендует использовать его, а не Java.
 
 В файл "settings.gradle", находящийся в корне репозитария добавил следующую строку:
 
@@ -32,6 +92,12 @@ dependencies {
 ```
 
 Ещё раз выполнил операцию "Sync now" и убедился, что сборка проекта прошла успешно. ВНИМАНИЕ! Синхронизацию необходимо обязательно выполнить, т.к. если этого не сделать, то Android Studio не загрузит зависимость и проект не будет собираться.
+
+### Отладка кода на Android
+
+Ключевой вопрос: как отлаживать код работы с USB-устройством, если единственный порт занят кабелем, подключающим телефон к Android Studio на ПК?
+
+Tools -> Device Manager выбрать закладку "Phisical" и настроить отладку по Wi-Fi. Следует заметить, что отладка работает только на устройствах с установленным Android 11+.
 
 ## Разработка кода
 
