@@ -33,7 +33,7 @@ class MainActivity : AppCompatActivity() {
                     manager as UsbManager?
                 )
                 if (availableDrivers.isEmpty()) {
-                    "No driver available".also { message.text = it }
+                    "The driver is unavailable".also { message.text = it }
                     return
                 }
 

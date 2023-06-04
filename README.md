@@ -101,30 +101,7 @@ Tools -> Device Manager выбрать закладку "Phisical" и настр
 
 ## Разработка кода
 
-Если удасться подключить библиотеку, то следующим этапом можно попробовать получить список драйверов для всех подключенных устройств (их может быть несколько, если используется USB Hub), а затем открыть соединение с первым из них:
-
-``` java
-// Find all available drivers from attached devices.
-UsbManager manager = (UsbManager) getSystemService(Context.USB_SERVICE);
-List<UsbSerialDriver> availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager);
-if (availableDrivers.isEmpty()) {
-	return;
-}
-
-// Open a connection to the first available driver.
-UsbSerialDriver driver = availableDrivers.get(0);
-UsbDeviceConnection connection = manager.openDevice(driver.getDevice());
-if (connection == null) {
-	// add UsbManager.requestPermission(driver.getDevice(), ..) handling here
-	return;
-}
-
-UsbSerialPort port = driver.getPorts().get(0); // Most devices have just one port (port 0)
-port.open(connection);
-port.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
-```
-
-По факту, был добавлен вот такой код на Kotlin:
+Для подключения к микроконтроллеру использовался следующий код, который был взят из примера mik3y и переработан с Java на Kotlin:
 
 ``` kotlin
 import android.content.Context
