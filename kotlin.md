@@ -55,6 +55,10 @@ fun main() {
 
 Цель модификации кода - сократить количество переменных в области видимости.
 
+Почитать больше: https://kotlinlang.ru/docs/scope-functions.html
+
 ## Android Studio
 
 IDE Android Studio распознаёт код на Java, находящийся в буфере обмена и при выполнении вставки предлагает преобразовать его в код на Kotlin.
+
+В IDE можно выполнить конвертацию Java-файла в Kotlin-файл, используя команду в меню Android Studio: **Code | Convert Java File to Kotlin File**.
