@@ -81,7 +81,7 @@ class MainActivity : AppCompatActivity() {
                         override fun onNewData(data: ByteArray) {
                             runOnUiThread {
                                 val textView = findViewById<TextView>(R.id.connection_msg)
-                                textView.append(data.toHex())
+                                textView.text = data.toHex()
                             }
                         }
                     }
