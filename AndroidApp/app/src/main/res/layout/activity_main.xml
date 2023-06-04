@@ -12,21 +12,56 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
-        android:layout_marginBottom="16dp"
-        android:text="Hello World!"
+        android:text="No information"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.047"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.022" />
+        app:layout_constraintTop_toBottomOf="@+id/button" />
 
     <Button
         android:id="@+id/button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
         android:text="Connect"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/connection_msg" />
+        app:layout_constraintTop_toBottomOf="@+id/textViewStatic2" />
+
+    <TextView
+        android:id="@+id/textViewStatic1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Device:"
+        tools:layout_editor_absoluteX="17dp"
+        tools:layout_editor_absoluteY="15dp" />
+
+    <TextView
+        android:id="@+id/textViewStatic2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Identification:"
+        app:layout_constraintTop_toBottomOf="@+id/textViewStatic1"
+        tools:layout_editor_absoluteX="16dp" />
+
+    <TextView
+        android:id="@+id/textViewDevice"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:text="Not detected"
+        app:layout_constraintStart_toEndOf="@+id/textViewStatic1"
+        tools:layout_editor_absoluteY="15dp" />
+
+    <TextView
+        android:id="@+id/textViewIdentification"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:text="Undefined"
+        app:layout_constraintStart_toEndOf="@+id/textViewStatic2"
+        app:layout_constraintTop_toBottomOf="@+id/textViewDevice" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

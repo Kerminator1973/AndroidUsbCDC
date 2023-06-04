@@ -37,15 +37,21 @@ class MainActivity : AppCompatActivity() {
                     return
                 }
 
-                // Open a connection to the first available driver.
                 val driver = availableDrivers[0]
 
+                // Выводим информацию о подключенном устройстве
+                val textViewDevice = findViewById<TextView>(R.id.textViewDevice)
+                textViewDevice.text = "pid = ${driver.device.productId}, vid =  ${driver.device.vendorId}"
+
+                val textViewIdentification = findViewById<TextView>(R.id.textViewIdentification)
+                textViewIdentification.text = driver.device.deviceName
+
+                // Open a connection to the first available driver.
                 val connection = manager.openDevice(driver.device)
                 if (connection == null) {
 
                     // Possibly, need permissions
-                    val text = "Can't open device. pid = ${driver.device.productId}, vid =  ${driver.device.vendorId}, Name = ${driver.device.deviceName}"
-                    message.text = text
+                    "No connection. Possible, need permissions".also { message.text = it }
 
                     // add UsbManager.requestPermission(driver.getDevice(), ..) handling here
                     return
