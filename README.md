@@ -205,7 +205,7 @@ if (port.serial != null) {
 }
 ```
 
-В качестве основы кода для обмена данными с Pico, был использован код из [статьи разработчика из Польши](https://forbot.pl/forum/topic/19927-komunikacja-raspberry-pi-pico-z-aplikacja-na-androida-poprzez-przewod-usb-cjava/). Особенности кода:
+В качестве основы кода для обмена данными с Pico, был использован код из статьи разработчика из Польши [matsobdev](https://forbot.pl/forum/topic/19927-komunikacja-raspberry-pi-pico-z-aplikacja-na-androida-poprzez-przewod-usb-cjava/). Особенности кода:
 
 - используются DTR и RTS
 - взаимодействие с микроконтроллером осуществляется из рабочего потока
@@ -277,9 +277,49 @@ var co100Ms = Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate({
 
 Следует заметить, что при отключении устройства, планировщик должен быть остановлен, для чего используется co100Ms.
 
-## Что ещё можно почитать об этой библиотеке
+## Использование BroadcastReceiver для обработки уведомлений о подключении/отключении USB-устройства
 
- в которой используется DTR и RTS. Код, приведённой в этой статье позволил считать какую-то информацию из порта, но, наиболее вероятно, что это был REPL.
+Выполнить подписку на события можно следующим образом:
+
+``` kt
+broadcastReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        when (intent.action) {
+            "android.hardware.usb.action.USB_DEVICE_ATTACHED" -> {
+                // Подключено устройство
+            }
+
+            "android.hardware.usb.action.USB_DEVICE_DETACHED" -> {
+                //serialInputOutputManager!!.stop()
+
+                // Отключено устройство
+            }
+        }
+    }
+}
+
+// Выполняем подписку на события подключения и отключения микроконтроллера к телефону по USB
+val intentFilter = IntentFilter()
+intentFilter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+intentFilter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
+this.registerReceiver(broadcastReceiver, intentFilter)
+```
+
+Однако, этот функционал заработал у меня лишь частично. Очень похоже, что использованием Device Filter перезапускает приложение, а обработка событий (Attached/Detached) осуществляется в удаляемой копии. Соответственно, увидеть сообщение о подключении устройства можно ненадолго, а сообщение об отключении устройства увидеть вообще не удаётся. Таким образом, создаётся впечатление, что следует выбрать только один из вариантов реализации: Device Filter, или обработку действий ACTION_USB_DEVICE_ATTACHED и ACTION_USB_DEVICE_DETACHED.
+
+## Удаление Activity
+
+При завершении приложения (Activity) кажется разумным отписаться от зарегистрированных подписок:
+
+``` kt
+override fun onDestroy() {
+    serialInputOutputManager!!.stop()
+    //unregisterReceiver(broadcastReceiver)
+    super.onDestroy()
+}
+```
+
+## Что ещё можно почитать об этой библиотеке
 
 Статья японского разработчика, который решал подобную задачу: https://qiita.com/hiro-han/items/78b226b35174106259cd
 

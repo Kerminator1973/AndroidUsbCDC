@@ -62,3 +62,5 @@ fun main() {
 IDE Android Studio распознаёт код на Java, находящийся в буфере обмена и при выполнении вставки предлагает преобразовать его в код на Kotlin.
 
 В IDE можно выполнить конвертацию Java-файла в Kotlin-файл, используя команду в меню Android Studio: **Code | Convert Java File to Kotlin File**.
+
+Отключить spell checking в комментариях в исходном тексте можно выбрав File -> Settings... -> Editor -> Inspections -> Proofreading -> Typo, и удалив галочку в пункте "Process comments".

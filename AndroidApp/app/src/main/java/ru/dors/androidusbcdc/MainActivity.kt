@@ -11,7 +11,6 @@ import com.hoho.android.usbserial.driver.UsbSerialPort
 import com.hoho.android.usbserial.driver.UsbSerialProber
 import com.hoho.android.usbserial.util.SerialInputOutputManager
 import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 
 
 class MainActivity : AppCompatActivity() {
@@ -22,6 +21,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Взаимодействие с микроконтроллером будет осуществляться при нажатии экранной кнопки
         val button = findViewById<Button>(R.id.button)
         button.setOnClickListener(object : View.OnClickListener {
             override fun onClick(v: View?) {
@@ -52,7 +52,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 // Подключаемся к устройству
-                val port = driver.ports[0] // Most devices have just one port (port 0)
+                val port = driver.ports[1] // Most devices have just one port (port 0)
 
                 try {
                     port.open(connection)
@@ -101,6 +101,14 @@ class MainActivity : AppCompatActivity() {
                 //port.close();
             }
         })
+    }
+
+    // При уничтожении Activity, отписываемся от подписки на события и останавливаем
+    // код, обрабатывающий поступающие от микроконтроллера данные
+    override fun onDestroy() {
+        //serialInputOutputManager!!.stop()
+        //unregisterReceiver(broadcastReceiver)
+        super.onDestroy()
     }
 
     fun ByteArray.toHex(): String = joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }
