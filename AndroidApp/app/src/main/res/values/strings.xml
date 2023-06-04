@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">Android USB CDC</string>
+    <string name="connect_button">Connect</string>
+    <string name="textview_id">Id:</string>
+    <string name="textview_dev">Dev:</string>
+    <string name="textview_no_information">No information</string>
+    <string name="textview_not_detected">Not detected</string>
+    <string name="textview_undefined">Undefined</string>
+    <string name="textview_driver_unavailable">Driver unavailable</string>
 </resources>
