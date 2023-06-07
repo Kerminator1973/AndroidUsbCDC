@@ -149,8 +149,8 @@ class CdcPortsAdapter(private val context: Context, private val arrayList: java.
         readEndpoint = convertView.findViewById(R.id.readEndpoint)
 
         idNumber.text = arrayList[position].getId().toString()
-        writeEndpoint.text = arrayList[position].getWriteEndpoint().toString()
-        readEndpoint.text = arrayList[position].getReadEndpoint().toString()
+        writeEndpoint.text = "Write Endpoint: " + arrayList[position].getWriteEndpoint()
+        readEndpoint.text = "Read Endpoint: " + arrayList[position].getReadEndpoint()
 
         return convertView
     }
