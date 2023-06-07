@@ -29,8 +29,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        arrayList.add(CdcPortData(1, 12, 13))
-        arrayList.add(CdcPortData(2, 14, 15))
         adapter = CdcPortsAdapter(this, arrayList)
 
         listView = findViewById(R.id.listView)
@@ -68,9 +66,41 @@ class MainActivity : AppCompatActivity() {
                     // Possibly, need permissions
                     message.text = getString(R.string.text_need_permission)
 
+                    // permissions будут отсутствовать, если отказаться запустить приложение
+                    // при подключении кабеля к мобильному телефону
+
                     // add UsbManager.requestPermission(driver.getDevice(), ..) handling here
                     return
                 }
+
+                // Добавляем все доступные порты в общий список
+                arrayList.clear()
+                for(port in driver.ports) {
+
+                    try {
+                        port.open(connection)
+
+                        var writeEnpointAddr = 0;
+                        if (port.writeEndpoint != null)
+                            writeEnpointAddr = port.writeEndpoint.address
+
+                        var readEnpointAddr = 0;
+                        if (port.readEndpoint != null)
+                            readEnpointAddr = port.readEndpoint.address
+
+                        arrayList.add(CdcPortData(port.portNumber, writeEnpointAddr, readEnpointAddr))
+
+                        // TODO: порт нужно закрывать, т.к. потом не удасться подключиться ещё раз
+                        // Нюанс состоит в том, что close() ещё и connection закрывает
+                        //port.close();
+
+                    } catch (exception: Exception) {
+                        arrayList.add(CdcPortData(0, 0,0))
+                    }
+                }
+
+                // Уведомляем адаптер ListView об изменении списка доступных портов
+                adapter!!.notifyDataSetChanged()
 
                 // Подключаемся к устройству
                 val port = driver.ports[1] // Most devices have just one port (port 0)
