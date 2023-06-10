@@ -69,6 +69,26 @@ class CdcPortData(private var id: Int, private var writeEndpoint: Int,
 
 В приведённом выше примере, Kotlin создать в классе CdcPortData три private-члена: id, writeEndpoint, readEndpoint. При создании экземпляра класса произойдёт их инициализация.
 
+## Placeholders
+
+При разработке Andriod-приложений, типовым подходом является обработка сообщений. Callback-методы, обычно, имеют избыточный для решения конкретной задачи функционал и среда разработки предлагает заменять их на _placeholders_. Например:
+
+``` kt
+    listView.onItemClickListener = OnItemClickListener { _, _, i, _ ->
+        // Запоминаем выборанный номер порта
+        selectedPort = i
+        Toast.makeText(this.applicationContext, i.toString(), Toast.LENGTH_LONG).show()
+    }
+```
+
+## Toast
+
+Типовой способ использования Toast в Kotlin выглядит так:
+
+``` kt
+Toast.makeText(this.applicationContext, i.toString(), Toast.LENGTH_LONG).show()
+```
+
 ## Android Studio
 
 IDE Android Studio распознаёт код на Java, находящийся в буфере обмена и при выполнении вставки предлагает преобразовать его в код на Kotlin.
