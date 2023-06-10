@@ -12,14 +12,6 @@
 - Связать адаптер и ListView с данными
 - Связать ListView с адаптером
 
-Если список в ListView динамически изменяется, его можно обновить используя следующий код:
-
-``` kt
-arrayList.clear()
-arrayList.add(CdcPortData(0, 0,0))
-adapter!!.notifyDataSetChanged()
-```
-
 ## Реализация модели
 
 Реализация модели может выглядесь следующим образом:
@@ -117,6 +109,8 @@ Kotlin позволяет определить и проинициализиро
 
 ## Разработать адаптер ArrayList to ListView
 
+Задача адаптера - связать модель (ArrayList, в котором хранятся экземпляры класса CdcPortData) и представление, которое берётся из файла "row.xml"
+
 Пример реализации:
 
 ``` kt
@@ -158,8 +152,52 @@ class CdcPortsAdapter(private val context: Context, private val arrayList: java.
 
 В этом определении, в классе определены и проинициализированы: context, который используется для доступа к ресурсам приложения и arrayList, в котором хранятся данные для отображения.
 
+## Передача данных в Adapter
 
-- Разработать адаптер, который инициализируется списком ArrayList, в котором будут хранится экземпляры класса-модели (CdcPortData). Задача адаптера - связать модель и представление, которое берётся из файла "row.xml"
-- Написать код, который будет заполнять ArrayList экземплярами класса-модели
-- Связать адаптер и ListView с данными
-- Связать ListView с адаптером
+Список доступных портов - это член-класса, реализующего Activity:
+
+``` kt
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var listView: ListView
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        ...
+        arrayList.clear()
+        for(port in driver.ports) {
+            ...
+            arrayList.add(CdcPortData(port.portNumber, writeEnpointAddr, readEnpointAddr))
+        }
+```
+
+Если список в ListView динамически изменяется, его можно обновить используя следующий код:
+
+``` kt
+arrayList.clear()
+arrayList.add(CdcPortData(0, 0,0))
+adapter!!.notifyDataSetChanged()
+```
+
+## Связывание модели (данные), адаптера и ListView
+
+Типовой код связывания может выглядеть следующим образом:
+
+``` kt
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var listView: ListView
+    private var arrayList: ArrayList<CdcPortData> = ArrayList()
+    private var adapter: CdcPortsAdapter? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        adapter = CdcPortsAdapter(this, arrayList)
+        listView = findViewById(R.id.listView)
+        listView.adapter = adapter
+```
+
+Мы создаём экземпляр класса-адаптера, инициализируея его контейнером, хранящим экземпляры класса CdcPortData. Важно заметить, что эта инициализация предполагает, что мы не сможет затем удалить адаптер из создать новый - это приведёт к потере связи и развале логики работы Activity. Вместо этого, мы должны использовать единожды созданный контейнер.
+
+Далее, нам достаточно лишь проинициализировать ссылку на адаптер в экземпляре класса ListView.
