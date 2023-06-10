@@ -6,24 +6,28 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView.OnItemClickListener
 import android.widget.BaseAdapter
 import android.widget.Button
 import android.widget.ListView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.hoho.android.usbserial.driver.UsbSerialPort
 import com.hoho.android.usbserial.driver.UsbSerialProber
 import com.hoho.android.usbserial.util.SerialInputOutputManager
-import java.util.concurrent.Executors
 
 
 class MainActivity : AppCompatActivity() {
 
     var serialInputOutputManager: SerialInputOutputManager? = null
 
+    // Параметры, необходимые для создания списка выбора порта
     private lateinit var listView: ListView
     private var arrayList: ArrayList<CdcPortData> = ArrayList()
     private var adapter: CdcPortsAdapter? = null
+
+    // Номер порта, который был выбран пользователем
+    private var selectedPort: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,7 +58,7 @@ class MainActivity : AppCompatActivity() {
 
                 // Выводим информацию о подключенном устройстве
                 val textViewDevice = findViewById<TextView>(R.id.textViewDevice)
-                textViewDevice.text = "pid = ${driver.device.productId}, vid =  ${driver.device.vendorId}"
+                "pid = ${driver.device.productId}, vid =  ${driver.device.vendorId}".also { textViewDevice.text = it }
 
                 val textViewIdentification = findViewById<TextView>(R.id.textViewIdentification)
                 textViewIdentification.text = driver.device.deviceName
@@ -101,7 +105,21 @@ class MainActivity : AppCompatActivity() {
 
                 // Уведомляем адаптер ListView об изменении списка доступных портов
                 adapter!!.notifyDataSetChanged()
+            }
+        })
 
+        listView.onItemClickListener =
+            OnItemClickListener { _, _, i, _ ->
+                // Запоминаем выборанный номер порта
+                selectedPort = i
+                Toast.makeText(this.applicationContext, i.toString(), Toast.LENGTH_LONG).show()
+            }
+
+        val buttonExchange = findViewById<Button>(R.id.buttonExchange)
+        buttonExchange.setOnClickListener(object : View.OnClickListener {
+            override fun onClick(v: View?) {
+
+                /*
                 // Подключаемся к устройству
                 val port = driver.ports[1] // Most devices have just one port (port 0)
 
@@ -140,17 +158,18 @@ class MainActivity : AppCompatActivity() {
                 // Запускаем отдельный поток, который будет отправлять в устройство одну и
                 // ту же команду каждый 500 мс
                 //var co100Ms = Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate({
-                    try {
-                        val request = ubyteArrayOf(0x02U, 0x03U, 0x06U, 0x37U, 0xFEU, 0xC7U).toByteArray()
-                        port.write(request, 0)
-                    } catch (ignored: java.lang.Exception) {
-                    }
+                try {
+                    val request = ubyteArrayOf(0x02U, 0x03U, 0x06U, 0x37U, 0xFEU, 0xC7U).toByteArray()
+                    port.write(request, 0)
+                } catch (ignored: java.lang.Exception) {
+                }
                 //}, 0, 500, TimeUnit.MILLISECONDS)
 
                 // TODO: когда закрывать порт?
                 //port.close();
+                */
             }
-        })
+        });
     }
 
     fun ByteArray.toHex(): String = joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }
