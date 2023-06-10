@@ -57,6 +57,18 @@ fun main() {
 
 Почитать больше: https://kotlinlang.ru/docs/scope-functions.html
 
+## Создание и инициализация private-членов класса
+
+Kotlin позволяет определить и проинициализировать некоторые из private-членов класса, указав их в определении класса:
+
+``` kt
+class CdcPortData(private var id: Int, private var writeEndpoint: Int,
+                  private var readEndpoint: Int
+) { ...
+```
+
+В приведённом выше примере, Kotlin создать в классе CdcPortData три private-члена: id, writeEndpoint, readEndpoint. При создании экземпляра класса произойдёт их инициализация.
+
 ## Android Studio
 
 IDE Android Studio распознаёт код на Java, находящийся в буфере обмена и при выполнении вставки предлагает преобразовать его в код на Kotlin.
