@@ -13,8 +13,10 @@ import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.hoho.android.usbserial.driver.UsbSerialPort
 import com.hoho.android.usbserial.driver.UsbSerialProber
 import com.hoho.android.usbserial.util.SerialInputOutputManager
+import java.util.concurrent.Executors
 
 
 class MainActivity : AppCompatActivity() {
@@ -103,6 +105,11 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
+                // Закрываем как порт, так и connection
+                if (driver.ports.size > 0) {
+                    driver.ports[0].close();
+                }
+
                 // Уведомляем адаптер ListView об изменении списка доступных портов
                 adapter!!.notifyDataSetChanged()
             }
@@ -119,11 +126,24 @@ class MainActivity : AppCompatActivity() {
         buttonExchange.setOnClickListener(object : View.OnClickListener {
             override fun onClick(v: View?) {
 
-                /*
+                val manager = getSystemService (Context.USB_SERVICE)
+                val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(
+                    manager as UsbManager?
+                )
+                if (availableDrivers.isEmpty()) return
+
+                val driver = availableDrivers[0]
+
                 // Подключаемся к устройству
-                val port = driver.ports[1] // Most devices have just one port (port 0)
+                val port = driver.ports[selectedPort]
+
+                // Open a connection to the first available driver.
+                val connection = manager.openDevice(driver.device) ?: return
+
+                val message = findViewById<TextView>(R.id.connection_msg)
 
                 try {
+
                     port.open(connection)
 
                     port.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
@@ -167,12 +187,11 @@ class MainActivity : AppCompatActivity() {
 
                 // TODO: когда закрывать порт?
                 //port.close();
-                */
             }
         });
     }
 
-    fun ByteArray.toHex(): String = joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }
+    fun ByteArray.toHex(): String = joinToString(separator = " ") { eachByte -> "%02x".format(eachByte) }
 }
 
 //Class CdcPortsAdapter
