@@ -81,6 +81,14 @@ class CdcPortData(private var id: Int, private var writeEndpoint: Int,
     }
 ```
 
+## Поздняя инициализация - аналог readonly в C\#
+
+Мы можем определить переменную в классе, используя модификатор lateinit, не инициализировать её сразу, а сделать это в OnCreate(). Это очень похоже на readonly в C\#:
+
+``` kt
+private lateinit var listView: ListView
+```
+
 ## Toast
 
 Типовой способ использования Toast в Kotlin выглядит так:
