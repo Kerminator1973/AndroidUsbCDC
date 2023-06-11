@@ -320,6 +320,78 @@ var co100Ms = Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate({
 
 Следует заметить, что при отключении устройства, планировщик должен быть остановлен, для чего используется co100Ms.
 
+## Запрос права работать с USB CDC, если этого права не оказалось в нужный момент
+
+Проблема может возникнуть при следующих обстоятельствах: пользователь подключил USB-устройсво, получил сообщение с просьбой предоставить право работы с подключенным USB-устройством, но испугался и нажал "Отмена". Поскольку право не было получено, работать с прибором можно будет только в том случае, если пользователь физически отключит USB-устройство и подключит его ещё раз.
+
+Однако, мы можем явным образом запросить у пользователя разрешение на доступ к USB-устройству ещё раз. Сделать это можно используя системную функцию **requestPermission()**. Например, вызов openDevice() закончивается неудачей - наиболее вероятно, что у нас нет необходимых прав. В этом случаем мы вызываем метод requestPermission(), реализованный в wrapper-е библиотеки mik8y, передаём ссылку на интересующее нас устройство и Intent, который приведёт к нашему Activity:
+
+``` kt
+val connection = manager.openDevice(driver.device)
+if (connection == null) {
+
+    // Possibly, need permissions
+
+    val flags =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_MUTABLE else 0
+    val usbPermissionIntent = PendingIntent.getBroadcast(
+        this@MainActivity,
+        0,
+        Intent(INTENT_ACTION_GRANT_USB),
+        flags
+    )
+    manager.requestPermission(driver.device, usbPermissionIntent)
+    return
+}
+```
+
+Идентификатор INTENT_ACTION_GRANT_USB - это просто идентификационная строка, определённая в нашем коде:
+
+``` kt
+private val INTENT_ACTION_GRANT_USB = "UsbCdcApp.GRANT_USB"
+```
+
+Чтобы получить сообщение о получении права, нам необходимо настроить подписчик - BroadcastReceiver. Сделать это можно в методах onStart() и onStop():
+
+``` kt
+class MainActivity : AppCompatActivity() {
+    ...
+    override fun onStart() {
+        super.onStart()
+        val intentFilter = IntentFilter(INTENT_ACTION_GRANT_USB)
+        registerReceiver(usbCdcStateReceiver, intentFilter)
+    }
+    override fun onStop() {
+        super.onStop()
+        unregisterReceiver(usbCdcStateReceiver)
+    }
+```
+
+При получении сообщения `INTENT_ACTION_GRANT_USB` будем вызван зарегистрированный метод:
+
+``` kt
+private val usbCdcStateReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (INTENT_ACTION_GRANT_USB == intent.action) {
+
+            // Информация о том, удалось ли получить доступ, или нет, хранится
+            // в дополнительном параметре с именем UsbManager.EXTRA_PERMISSION_GRANTED (строка)
+            if (usbPermission) { intent.getBooleanExtra(
+                    UsbManager.EXTRA_PERMISSION_GRANTED,
+                    false
+                )
+            {
+                Toast.makeText(this@MainActivity, "Granted", Toast.LENGTH_LONG).show()
+            }  
+            else
+            {
+                Toast.makeText(this@MainActivity, "Denied", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+}
+```
+
 ## Использование BroadcastReceiver для обработки уведомлений о подключении/отключении USB-устройства
 
 Выполнить подписку на события можно следующим образом:
