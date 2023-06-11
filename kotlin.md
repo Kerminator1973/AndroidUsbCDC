@@ -89,6 +89,10 @@ class CdcPortData(private var id: Int, private var writeEndpoint: Int,
 Toast.makeText(this.applicationContext, i.toString(), Toast.LENGTH_LONG).show()
 ```
 
+## Падение приложения
+
+При падении приложения, Android позволяет посмотреть информацию о возникшем исключении (если это была Debug-сборка) прямо на мобильном телефоне. Сообщение включает Callstack и дополнительные пояснения. Этой информации часто бывает достаточно для того, чтобы выявить причину возникновения исключения.
+
 ## Android Studio
 
 IDE Android Studio распознаёт код на Java, находящийся в буфере обмена и при выполнении вставки предлагает преобразовать его в код на Kotlin.
