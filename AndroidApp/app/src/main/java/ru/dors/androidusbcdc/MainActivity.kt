@@ -1,7 +1,12 @@
 package ru.dors.androidusbcdc
 
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.hardware.usb.UsbManager
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -23,6 +28,10 @@ class MainActivity : AppCompatActivity() {
 
     var serialInputOutputManager: SerialInputOutputManager? = null
 
+    // Определяем идентификационную строку, которая используется при запросе
+    // прав доступа к устройству
+    private val INTENT_ACTION_GRANT_USB = "UsbCdcApp.GRANT_USB"
+
     // Параметры, необходимые для создания списка выбора порта
     private lateinit var listView: ListView
     private var arrayList: ArrayList<CdcPortData> = ArrayList()
@@ -30,6 +39,44 @@ class MainActivity : AppCompatActivity() {
 
     // Номер порта, который был выбран пользователем
     private var selectedPort: Int = 0
+
+    // Методы onStart() и onStop() используются для организации подписки и отказа
+    // от подписки на события, связанные с получением права работы с устройством USB CDC
+    override fun onStart() {
+        super.onStart()
+        val intentFilter = IntentFilter(INTENT_ACTION_GRANT_USB)
+        registerReceiver(usbCdcStateReceiver, intentFilter)
+    }
+    override fun onStop() {
+        super.onStop()
+        unregisterReceiver(usbCdcStateReceiver)
+    }
+
+    // Обработчик широковещательного сообщения о получении/отказе права работать с USB CDC
+    private val usbCdcStateReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (INTENT_ACTION_GRANT_USB == intent.action) {
+
+                // Информация о том, удалось ли получить доступ, или нет, хранится
+                // в дополнительном параметре с именем UsbManager.EXTRA_PERMISSION_GRANTED (строка)
+                var usbPermission = intent.getBooleanExtra(
+                        UsbManager.EXTRA_PERMISSION_GRANTED,
+                        false
+                    )
+
+                if (usbPermission) {
+                    Toast.makeText(this@MainActivity, "Granted", Toast.LENGTH_LONG).show()
+
+                    val message = findViewById<TextView>(R.id.connection_msg)
+                    message.text = "Try one more time!"
+                }
+                else
+                {
+                    Toast.makeText(this@MainActivity, "Denied", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -76,6 +123,15 @@ class MainActivity : AppCompatActivity() {
                     // при подключении кабеля к мобильному телефону
 
                     // add UsbManager.requestPermission(driver.getDevice(), ..) handling here
+                    val flags =
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_MUTABLE else 0
+                    val usbPermissionIntent = PendingIntent.getBroadcast(
+                        this@MainActivity,
+                        0,
+                        Intent(INTENT_ACTION_GRANT_USB),    // Это просто идентификационная строка
+                        flags
+                    )
+                    manager.requestPermission(driver.device, usbPermissionIntent)
                     return
                 }
 
