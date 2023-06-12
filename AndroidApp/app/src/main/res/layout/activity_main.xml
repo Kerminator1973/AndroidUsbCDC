@@ -86,4 +86,13 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/listView" />
 
+    <Button
+        android:id="@+id/buttonClear"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:text="Clear"
+        app:layout_constraintStart_toEndOf="@+id/buttonExchange"
+        app:layout_constraintTop_toTopOf="@+id/buttonExchange" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

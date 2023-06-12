@@ -178,6 +178,12 @@ class MainActivity : AppCompatActivity() {
                 Toast.makeText(this.applicationContext, i.toString(), Toast.LENGTH_LONG).show()
             }
 
+        val buttonClear = findViewById<Button>(R.id.buttonClear)
+        buttonClear.setOnClickListener {
+            val textView = findViewById<TextView>(R.id.connection_msg)
+            textView.text = ""
+        };
+
         val buttonExchange = findViewById<Button>(R.id.buttonExchange)
         buttonExchange.setOnClickListener(object : View.OnClickListener {
             override fun onClick(v: View?) {
@@ -188,20 +194,15 @@ class MainActivity : AppCompatActivity() {
                 )
                 if (availableDrivers.isEmpty()) return
 
-                val driver = availableDrivers[0]
-
                 // Подключаемся к устройству
+                val driver = availableDrivers[0]
                 val port = driver.ports[selectedPort]
-
-                // Open a connection to the first available driver.
                 val connection = manager.openDevice(driver.device) ?: return
-
                 val message = findViewById<TextView>(R.id.connection_msg)
 
                 try {
 
                     port.open(connection)
-
                     port.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
 
                     // Сигнал готовности терминала: Pico и Android начинают обмен данными
@@ -219,7 +220,7 @@ class MainActivity : AppCompatActivity() {
                         override fun onNewData(data: ByteArray) {
                             runOnUiThread {
                                 val textView = findViewById<TextView>(R.id.connection_msg)
-                                textView.text = data.toHex()
+                                textView.append(data.toHex() + "\n")
                             }
                         }
                     }
