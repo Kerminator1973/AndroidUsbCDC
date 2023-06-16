@@ -18,6 +18,8 @@ import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.hoho.android.usbserial.driver.Ch34xSerialDriver
+import com.hoho.android.usbserial.driver.ProbeTable
 import com.hoho.android.usbserial.driver.UsbSerialPort
 import com.hoho.android.usbserial.driver.UsbSerialProber
 import com.hoho.android.usbserial.util.SerialInputOutputManager
@@ -95,6 +97,12 @@ class MainActivity : AppCompatActivity() {
                 val message = findViewById<TextView>(R.id.connection_msg)
 
                 val manager = getSystemService (Context.USB_SERVICE)
+
+
+                //val customTable = ProbeTable()
+                //customTable.addProduct(6790, 21971, Ch34xSerialDriver::class.java)
+                //val prober = UsbSerialProber(customTable)
+                //val availableDrivers = prober.findAllDrivers(
                 val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(
                     manager as UsbManager?
                 )
@@ -189,6 +197,11 @@ class MainActivity : AppCompatActivity() {
             override fun onClick(v: View?) {
 
                 val manager = getSystemService (Context.USB_SERVICE)
+
+                //val customTable = ProbeTable()
+                //customTable.addProduct(6790, 21971, Ch34xSerialDriver::class.java)
+                //val prober = UsbSerialProber(customTable)
+                //val availableDrivers = prober.findAllDrivers(
                 val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(
                     manager as UsbManager?
                 )
@@ -203,7 +216,8 @@ class MainActivity : AppCompatActivity() {
                 try {
 
                     port.open(connection)
-                    port.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
+                    //port.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
+                    port.setParameters(921600, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
 
                     // Сигнал готовности терминала: Pico и Android начинают обмен данными
                     port.dtr = true
@@ -236,9 +250,25 @@ class MainActivity : AppCompatActivity() {
                 // ту же команду каждый 500 мс
                 //var co100Ms = Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate({
                 try {
+
+                    // DSlip: identification
+                    //val request = ubyteArrayOf(0xB4U, 0x00U, 0x81U, 0x00U, 0x74U).toByteArray()
+
+                    // CCNet: identification
                     val request = ubyteArrayOf(0x02U, 0x03U, 0x06U, 0x37U, 0xFEU, 0xC7U).toByteArray()
                     port.write(request, 0)
+
+                    runOnUiThread {
+                        val textView = findViewById<TextView>(R.id.connection_msg)
+                        textView.text = "Written\n"
+                    }
+
                 } catch (ignored: java.lang.Exception) {
+
+                    runOnUiThread {
+                        val textView = findViewById<TextView>(R.id.connection_msg)
+                        textView.append("Exception during write command\n")
+                    }
                 }
                 //}, 0, 500, TimeUnit.MILLISECONDS)
 
