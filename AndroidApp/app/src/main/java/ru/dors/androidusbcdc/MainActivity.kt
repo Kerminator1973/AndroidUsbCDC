@@ -84,6 +84,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        setSupportActionBar(findViewById(R.id.app_toolbar))
+
         adapter = CdcPortsAdapter(this, arrayList)
 
         listView = findViewById(R.id.listView)

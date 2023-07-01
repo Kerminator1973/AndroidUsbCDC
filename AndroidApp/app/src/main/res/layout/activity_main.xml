@@ -6,6 +6,15 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/app_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
+        android:elevation="4dp"
+        android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light"/>
+
     <Button
         android:id="@+id/button"
         android:layout_width="wrap_content"
@@ -14,7 +23,7 @@
         android:layout_marginTop="16dp"
         android:text="@string/connect_button"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@+id/app_toolbar" />
 
     <TextView
         android:id="@+id/textViewStatic1"
@@ -24,7 +33,7 @@
         android:layout_marginTop="16dp"
         android:text="@string/textview_id"
         app:layout_constraintStart_toEndOf="@+id/button"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toBottomOf="@+id/app_toolbar" />
 
     <TextView
         android:id="@+id/textViewDevice"
