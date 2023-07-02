@@ -9,4 +9,5 @@
     <string name="text_driver_unavailable">Driver unavailable</string>
     <string name="text_need_permission">No connection. Possible, need permissions</string>
     <string name="text_exception">An exception happens</string>
+    <string name="action_settings">Options</string>
 </resources>
