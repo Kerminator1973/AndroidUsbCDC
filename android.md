@@ -89,3 +89,79 @@ override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
     }
 }
 ```
+
+## Добавить новую Activity и перейти в неё
+
+Android Studio содержит wizard, который позволяет сгенерировать шаблон новой Activity и включить его в проект.
+
+Для перехода в эту Activity, следует создать Intent, т.н. намерение выполнить действие, указав его и вызвать метод startActivity():
+
+``` kotlin
+val intent = Intent(this, OptionsActivity::class.java)
+intent.putExtra("key", value)
+startActivity(intent)
+```
+
+В идеологии Android, форма пользовательского интерфейса является некоторой деятельностью/активностью (Activity). Часть активностей выполняет сама операционная система, а часть является уникальной для конкретного приложения.
+
+Передавать параметры в Activity можно и вот так:
+
+``` kt
+startActivity(Intent(this, Page2::class.java).apply {
+    putExtra("extra_1", value1)
+    putExtra("extra_2", value2)
+    putExtra("extra_3", value3)
+})
+```
+
+### Добавить кнопку Back
+
+Ключевая статья находится [здесь](https://www.geeksforgeeks.org/how-to-add-and-customize-back-button-of-action-bar-in-android/)
+
+Гипотетически, самый простой способ обтработать нажатие кнопки "Back" - добавить следующий обработчик:
+
+``` kt
+    override fun onBackPressed() {
+        finish()
+    }
+```
+
+Такой подход работает, но только если нажимается аппаратная кнопка "Back", либо если выполняется жест "смахивание справа".
+
+Более честным решение является добавления Toolbar-а. Мы можем включить в разметку вспомогательной Activity следующий код:
+
+``` kt
+<androidx.appcompat.widget.Toolbar
+    android:id="@+id/back_toolbar"
+    android:layout_width="match_parent"
+    android:layout_height="?attr/actionBarSize"
+    android:background="?attr/colorPrimary"
+    android:elevation="4dp"
+    android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
+    app:popupTheme="@style/ThemeOverlay.AppCompat.Light"/>
+```
+
+Кроме этого, мы должны активировать во вспомогательном Activity кнопку Home/Back:
+
+``` kt
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    setContentView(R.layout.activity_options)
+
+    // Активируем в Toolbare кнопку Home
+    setSupportActionBar(findViewById(R.id.back_toolbar))
+    val actionBar: ActionBar? = supportActionBar
+    actionBar?.setDisplayHomeAsUpEnabled(true)
+}
+```
+
+Если скомпилировать решение, то кнопка "Back/Home" появится, но её нажатие не будет приводить ни к какому результату. Для того, чтобы выполнялся возврат в основной, или любой другой Activity, следует добавить описание родительского Activity в файле "AndroidManifest.xml". Например:
+
+``` xml
+<activity
+    android:name=".OptionsActivity"
+    android:parentActivityName=".MainActivity"
+    android:exported="false" />
+```
+
+Свойство **parentActivityName** указывает, что родительским Activity является ".MainActivity" и при нажатии кнопки Back/Home управление будет передано в ".MainActivity".

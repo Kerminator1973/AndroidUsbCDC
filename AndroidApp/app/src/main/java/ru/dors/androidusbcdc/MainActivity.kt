@@ -90,7 +90,9 @@ class MainActivity : AppCompatActivity() {
         R.id.action_settings -> {
             // Пользователь выбран пункт меню "Settings", поэтому нам следует перейти
             // в соответствующий Activity
-            Toast.makeText(this.applicationContext, "Settings", Toast.LENGTH_LONG).show()
+            val intent = Intent(this, OptionsActivity::class.java)
+            startActivity(intent)
+
             true
         }
 
