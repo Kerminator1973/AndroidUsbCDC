@@ -51,9 +51,9 @@ override fun onCreate(savedInstanceState: Bundle?) {
 </menu>
 ```
 
-Пункт **app:showAsAction** позволяет указать, каким образом следует отобразить элемент меню. Если мы указываем значение **never**, то элемент указывается в виде иконки, а если **ifRoom**, то в виде текста, если есть достаточное количество места в AppBar.
+Пункт **app:showAsAction** позволяет указать, каким образом следует отобразить элемент меню. Если мы указываем значение **ifRoom**, то элемент будет отображён только тогда, когда для него достаточно места в AppBar. Если установить значение **never**, то текст элемента будет отображаться только в том случае, когда пользователь нажмёт на иконку вызова меню - "три вертикально размещённые точки".
 
-Текст единственного пункта рекомендуется добавить в файл strings.xml:
+Названием единственного пункта меню `android:title="@string/action_settings"` рекомендуется добавить в файл strings.xml:
 
 ``` xml
 <string name="action_settings">Options</string>
@@ -70,3 +70,22 @@ override fun onCreateOptionsMenu(menu: Menu?): Boolean {
 ```
 
 Следует заметить, что при вставке текста, среда может добавить не корректные директивы импорта, например: Android.R, что может привести к сбоям при сборке проекта.
+
+Обработчик выбора пункта меню может быть реализован посредством перегружаемого метода onOptionsItemSelected(). Например:
+
+``` kt
+override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
+    R.id.action_settings -> {
+        // Пользователь выбран пункт меню "Settings", поэтому нам следует перейти
+        // в соответствующий Activity
+        Toast.makeText(this.applicationContext, "Settings", Toast.LENGTH_LONG).show()
+        true
+    }
+
+    else -> {
+        // If we got here, the user's action was not recognized.
+        // Invoke the superclass to handle it.
+        super.onOptionsItemSelected(item)
+    }
+}
+```
