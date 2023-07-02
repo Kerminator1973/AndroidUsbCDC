@@ -15,4 +15,78 @@
         android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light"/>
 
+    <TextView
+        android:id="@+id/protocolTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:text="Protocol (Probe):"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/back_toolbar" />
+
+    <RadioGroup
+        android:id="@+id/protocolGroup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/protocolTextView">
+
+        <RadioButton
+            android:id="@+id/dslip_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="DSlip"
+            tools:layout_editor_absoluteX="35dp"
+            tools:layout_editor_absoluteY="86dp" />
+
+        <RadioButton
+            android:id="@+id/ccnet_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CCNet"
+            tools:layout_editor_absoluteX="39dp"
+            tools:layout_editor_absoluteY="146dp" />
+
+    </RadioGroup>
+
+    <TextView
+        android:id="@+id/speedTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="32dp"
+        android:text="Speed (serial port):"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/protocolGroup" />
+
+    <RadioGroup
+        android:id="@+id/speedGroup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/speedTextView">
+
+        <RadioButton
+            android:id="@+id/default_speed_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Default (Pico)"
+            tools:layout_editor_absoluteX="35dp"
+            tools:layout_editor_absoluteY="86dp" />
+
+        <RadioButton
+            android:id="@+id/megabit_speed_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="921600 (BVS)"
+            tools:layout_editor_absoluteX="39dp"
+            tools:layout_editor_absoluteY="146dp" />
+
+
+    </RadioGroup>
+
+
 </androidx.constraintlayout.widget.ConstraintLayout>
