@@ -165,3 +165,53 @@ override fun onCreate(savedInstanceState: Bundle?) {
 ```
 
 Свойство **parentActivityName** указывает, что родительским Activity является ".MainActivity" и при нажатии кнопки Back/Home управление будет передано в ".MainActivity".
+
+## Добавить RadioGroup и RadioButton
+
+Для того, чтобы иметь возможность управлять Radio-кнопками, их необходимо объединить в один контейнер - RadioGroup. Сделать это можно следующим образом:
+
+``` xml
+<RadioGroup
+    android:id="@+id/protocolGroup"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="16dp"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toBottomOf="@+id/protocolTextView">
+
+    <RadioButton
+        android:id="@+id/dslip_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="DSlip"
+        tools:layout_editor_absoluteX="35dp"
+        tools:layout_editor_absoluteY="86dp" />
+
+    <RadioButton
+        android:id="@+id/ccnet_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="CCNet"
+        tools:layout_editor_absoluteX="39dp"
+        tools:layout_editor_absoluteY="146dp" />
+
+</RadioGroup>
+```
+
+Выбрать конкретную RadioButton можно используя _setter_:
+
+``` kt
+val dslipButton = findViewById<RadioButton>(R.id.dslip_button)
+dslipButton?.isChecked = true
+```
+
+Обработать выбор пользователем кнопки можно используя обработчик **setOnCheckedChangeListener**:
+
+``` kt
+val protocolGroup = findViewById<RadioGroup>(R.id.protocolGroup)
+protocolGroup.setOnCheckedChangeListener { _, checkedId ->
+    findViewById<RadioButton>(checkedId)?.apply {
+        Toast.makeText(this@OptionsActivity, text, Toast.LENGTH_LONG).show()
+    }
+}
+```
