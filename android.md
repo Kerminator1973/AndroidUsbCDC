@@ -215,3 +215,27 @@ protocolGroup.setOnCheckedChangeListener { _, checkedId ->
     }
 }
 ```
+
+## Сохранить выбранное значение в постоянной памяти
+
+Наиболее простой, но не самый эффективный, способ сохранить некоторое значение в постоянной памяти - использовать SharedPreferences. Ключевая статья находится [здесь](https://www.digitalocean.com/community/tutorials/android-sharedpreferences-kotlin).
+
+Чтобы сохранить значение может быть использован следующий код:
+
+``` kt
+val prefs =  getSharedPreferences("USB_CDC_PREFS", Context.MODE_PRIVATE)
+val protocol = (checkedId == R.id.dslip_button)
+
+val editor = prefs.edit()
+editor.putBoolean(getString(R.string.protocol_type), protocol)
+editor.apply()
+```
+
+Следует заметить, что метод **apply**() выполняет отложенную запись, в отличие от метода **commit**(), который выполняет запись сразу же.
+
+Считать ранее записанные данные можно следующим образом:
+
+``` kt
+val prefs =  getSharedPreferences("USB_CDC_PREFS", Context.MODE_PRIVATE)
+prefs.getBoolean(getString(R.string.protocol_type),true)
+```
