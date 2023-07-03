@@ -1,5 +1,13 @@
 # Особенности разработки приложений для Android
 
+## Toast
+
+Типовой способ использования Toast в Kotlin выглядит так:
+
+``` kt
+Toast.makeText(this.applicationContext, i.toString(), Toast.LENGTH_LONG).show()
+```
+
 ## Как добавить AppBar
 
 Официальная статья находится [здесь](https://developer.android.com/develop/ui/views/components/appbar/setting-up).
