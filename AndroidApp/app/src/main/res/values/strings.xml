@@ -10,4 +10,6 @@
     <string name="text_need_permission">No connection. Possible, need permissions</string>
     <string name="text_exception">An exception happens</string>
     <string name="action_settings">Options</string>
+    <string name="protocol_type">ProtocolType</string>
+    <string name="speed_value">SpeedValue</string>
 </resources>
