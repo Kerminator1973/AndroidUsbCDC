@@ -17,6 +17,7 @@ import android.widget.AdapterView.OnItemClickListener
 import android.widget.BaseAdapter
 import android.widget.Button
 import android.widget.ListView
+import android.widget.RadioButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -29,6 +30,10 @@ import java.util.concurrent.Executors
 class MainActivity : AppCompatActivity() {
 
     var serialInputOutputManager: SerialInputOutputManager? = null
+
+    // Параметры работы приложения
+    var useDSlipProtocol = true
+    var useDefaultSpeed = true
 
     // Определяем идентификационную строку, которая используется при запросе
     // прав доступа к устройству
@@ -109,6 +114,12 @@ class MainActivity : AppCompatActivity() {
 
         setSupportActionBar(findViewById(R.id.app_toolbar))
 
+        // Считываем актуальные параметры для работы с приложением
+        val prefs =  getSharedPreferences("USB_CDC_PREFS", Context.MODE_PRIVATE)
+        useDSlipProtocol = prefs.getBoolean(getString(R.string.protocol_type),true)
+        useDefaultSpeed = prefs.getBoolean(getString(R.string.speed_value),true)
+
+        // Осуществляем подготовительные действия для работы с COM-портом
         adapter = CdcPortsAdapter(this, arrayList)
 
         listView = findViewById(R.id.listView)
@@ -123,11 +134,6 @@ class MainActivity : AppCompatActivity() {
 
                 val manager = getSystemService (Context.USB_SERVICE)
 
-
-                //val customTable = ProbeTable()
-                //customTable.addProduct(6790, 21971, Ch34xSerialDriver::class.java)
-                //val prober = UsbSerialProber(customTable)
-                //val availableDrivers = prober.findAllDrivers(
                 val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(
                     manager as UsbManager?
                 )
@@ -223,10 +229,6 @@ class MainActivity : AppCompatActivity() {
 
                 val manager = getSystemService (Context.USB_SERVICE)
 
-                //val customTable = ProbeTable()
-                //customTable.addProduct(6790, 21971, Ch34xSerialDriver::class.java)
-                //val prober = UsbSerialProber(customTable)
-                //val availableDrivers = prober.findAllDrivers(
                 val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(
                     manager as UsbManager?
                 )
@@ -241,8 +243,10 @@ class MainActivity : AppCompatActivity() {
                 try {
 
                     port.open(connection)
-                    //port.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
-                    port.setParameters(921600, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
+
+                    // Устанавливаем скорость взаимодействия с прибором в зависимости от настройки
+                    val speed = if (useDefaultSpeed) 115200 else 921600
+                    port.setParameters(speed, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
 
                     // Сигнал готовности терминала: Pico и Android начинают обмен данными
                     port.dtr = true
@@ -280,7 +284,12 @@ class MainActivity : AppCompatActivity() {
                     //val request = ubyteArrayOf(0xB4U, 0x00U, 0x81U, 0x00U, 0x74U).toByteArray()
 
                     // CCNet: identification
-                    val request = ubyteArrayOf(0x02U, 0x03U, 0x06U, 0x37U, 0xFEU, 0xC7U).toByteArray()
+                    //val request = ubyteArrayOf(0x02U, 0x03U, 0x06U, 0x37U, 0xFEU, 0xC7U).toByteArray()
+
+                    val request = if (useDSlipProtocol)
+                        ubyteArrayOf(0xB4U, 0x00U, 0x81U, 0x00U, 0x74U).toByteArray()
+                    else ubyteArrayOf(0x02U, 0x03U, 0x06U, 0x37U, 0xFEU, 0xC7U).toByteArray()
+
                     port.write(request, 0)
 
                     runOnUiThread {
@@ -289,7 +298,6 @@ class MainActivity : AppCompatActivity() {
                     }
 
                 } catch (ignored: java.lang.Exception) {
-
                     runOnUiThread {
                         val textView = findViewById<TextView>(R.id.connection_msg)
                         textView.append("Exception during write command\n")
