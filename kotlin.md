@@ -64,7 +64,7 @@ Kotlin позволяет определить и проинициализиро
 ``` kt
 class CdcPortData(private var id: Int, private var writeEndpoint: Int,
                   private var readEndpoint: Int
-) { ...
+) { ... }
 ```
 
 В приведённом выше примере, Kotlin создать в классе CdcPortData три private-члена: id, writeEndpoint, readEndpoint. При создании экземпляра класса произойдёт их инициализация.
@@ -74,11 +74,11 @@ class CdcPortData(private var id: Int, private var writeEndpoint: Int,
 При разработке Andriod-приложений, типовым подходом является обработка сообщений. Callback-методы, обычно, имеют избыточный для решения конкретной задачи функционал и среда разработки предлагает заменять их на _placeholders_. Например:
 
 ``` kt
-    listView.onItemClickListener = OnItemClickListener { _, _, i, _ ->
-        // Запоминаем выборанный номер порта
-        selectedPort = i
-        Toast.makeText(this.applicationContext, i.toString(), Toast.LENGTH_LONG).show()
-    }
+listView.onItemClickListener = OnItemClickListener { _, _, i, _ ->
+    // Запоминаем выборанный номер порта
+    selectedPort = i
+    Toast.makeText(this.applicationContext, i.toString(), Toast.LENGTH_LONG).show()
+}
 ```
 
 ## Поздняя инициализация - аналог readonly в C\#
@@ -87,6 +87,32 @@ class CdcPortData(private var id: Int, private var writeEndpoint: Int,
 
 ``` kt
 private lateinit var listView: ListView
+```
+
+## Циклы в Kotlin
+
+В Kotlin можно явным образом указать как диапазон значений, так и шаг:
+
+``` kt
+for (i in 0..this.size step 16) { ... }
+```
+
+## Выделить подмножество из массива
+
+Для выделения подмножества из массива используется функция **slice**(). Например:
+
+``` kt
+val range = data.slice(firstElement until lastElement)
+```
+
+В вызове указывается первый и последний элемент подмножества, а ключевое слово **until** позволяет сделать код легче читаемым.
+
+## Преобразовать каждый элемент массива к строке и объединить их
+
+Если нам нужно вывести каждый элемент массива в 16-тиричном виде в строке, можно использовать метод joinToString():
+
+``` kt
+fun ByteArray.toHex(): String = joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }
 ```
 
 ## Падение приложения
