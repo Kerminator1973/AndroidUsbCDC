@@ -311,7 +311,20 @@ class MainActivity : AppCompatActivity() {
         });
     }
 
-    fun ByteArray.toHex(): String = joinToString(separator = " ") { eachByte -> "%02x".format(eachByte) }
+    fun ByteArray.toHex(): String {
+
+        val sb = StringBuilder()
+        for (i in 0..this.size step 16) {
+
+            val untilValue : Int = kotlin.math.min(this.size, i + 16)
+            val range = this.slice(i until untilValue)
+            val hexStr = range.joinToString(separator = " ") { eachByte -> "%02x".format(eachByte) }
+            sb.append(hexStr)
+            sb.append("\n")
+        }
+
+        return sb.toString()
+    }
 }
 
 //Class CdcPortsAdapter
