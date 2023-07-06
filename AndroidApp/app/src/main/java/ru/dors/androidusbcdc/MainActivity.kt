@@ -5,8 +5,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Typeface
 import android.hardware.usb.UsbManager
-import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
@@ -17,7 +17,6 @@ import android.widget.AdapterView.OnItemClickListener
 import android.widget.BaseAdapter
 import android.widget.Button
 import android.widget.ListView
-import android.widget.RadioButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -66,7 +65,7 @@ class MainActivity : AppCompatActivity() {
 
                 // Информация о том, удалось ли получить доступ, или нет, хранится
                 // в дополнительном параметре с именем UsbManager.EXTRA_PERMISSION_GRANTED (строка)
-                var usbPermission = intent.getBooleanExtra(
+                val usbPermission = intent.getBooleanExtra(
                         UsbManager.EXTRA_PERMISSION_GRANTED,
                         false
                     )
@@ -119,6 +118,11 @@ class MainActivity : AppCompatActivity() {
         useDSlipProtocol = prefs.getBoolean(getString(R.string.protocol_type),true)
         useDefaultSpeed = prefs.getBoolean(getString(R.string.speed_value),true)
 
+        // Изменяем шрифт, которым выводится ответ подключенного прибора. По умолчанию,
+        // Android не использует моноширинный шрифт, из-за чего полученные данные не выравнены
+        val dumpView = findViewById<TextView>(R.id.connection_msg)
+        dumpView.typeface = Typeface.MONOSPACE
+
         // Осуществляем подготовительные действия для работы с COM-портом
         adapter = CdcPortsAdapter(this, arrayList)
 
@@ -162,8 +166,7 @@ class MainActivity : AppCompatActivity() {
                     // при подключении кабеля к мобильному телефону
 
                     // add UsbManager.requestPermission(driver.getDevice(), ..) handling here
-                    val flags =
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_MUTABLE else 0
+                    val flags = PendingIntent.FLAG_MUTABLE
                     val usbPermissionIntent = PendingIntent.getBroadcast(
                         this@MainActivity,
                         0,
@@ -181,11 +184,11 @@ class MainActivity : AppCompatActivity() {
                     try {
                         port.open(connection)
 
-                        var writeEnpointAddr = 0;
+                        var writeEnpointAddr = 0
                         if (port.writeEndpoint != null)
                             writeEnpointAddr = port.writeEndpoint.address
 
-                        var readEnpointAddr = 0;
+                        var readEnpointAddr = 0
                         if (port.readEndpoint != null)
                             readEnpointAddr = port.readEndpoint.address
 
@@ -202,7 +205,7 @@ class MainActivity : AppCompatActivity() {
 
                 // Закрываем как порт, так и connection
                 if (driver.ports.size > 0) {
-                    driver.ports[0].close();
+                    driver.ports[0].close()
                 }
 
                 // Уведомляем адаптер ListView об изменении списка доступных портов
@@ -221,7 +224,7 @@ class MainActivity : AppCompatActivity() {
         buttonClear.setOnClickListener {
             val textView = findViewById<TextView>(R.id.connection_msg)
             textView.text = ""
-        };
+        }
 
         val buttonExchange = findViewById<Button>(R.id.buttonExchange)
         buttonExchange.setOnClickListener(object : View.OnClickListener {
@@ -308,15 +311,18 @@ class MainActivity : AppCompatActivity() {
                 // TODO: когда закрывать порт?
                 //port.close();
             }
-        });
+        })
     }
 
+    // Метод выводит байтовый массив в виде строки с шестнадцатеричными числами в блоках
+    // по двенадцать чисел. В общем случае, только 12 чисел помещается на экране телефона
+    // при использовании моноширинного шрифта
     fun ByteArray.toHex(): String {
 
         val sb = StringBuilder()
-        for (i in 0..this.size step 16) {
+        for (i in 0..this.size step 12) {
 
-            val untilValue : Int = kotlin.math.min(this.size, i + 16)
+            val untilValue : Int = kotlin.math.min(this.size, i + 12)
             val range = this.slice(i until untilValue)
             val hexStr = range.joinToString(separator = " ") { eachByte -> "%02x".format(eachByte) }
             sb.append(hexStr)
@@ -343,7 +349,7 @@ class CdcPortsAdapter(private val context: Context, private val arrayList: java.
     }
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View? {
 
-        var convertView: View?
+        val convertView: View?
         convertView = LayoutInflater.from(context).inflate(R.layout.row, parent, false)
         idNumber = convertView.findViewById(R.id.idNumber)
         writeEndpoint = convertView.findViewById(R.id.writeEndpoint)
