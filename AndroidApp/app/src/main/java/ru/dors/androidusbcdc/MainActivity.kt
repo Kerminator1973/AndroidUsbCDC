@@ -174,6 +174,7 @@ class MainActivity : AppCompatActivity() {
 
                 // Добавляем все доступные порты в общий список
                 arrayList.clear()
+
                 for(port in driver.ports) {
 
                     try {
@@ -190,11 +191,19 @@ class MainActivity : AppCompatActivity() {
                         arrayList.add(CdcPortData(port.portNumber, writeEndpointAddr, readEndpointAddr))
 
                         // Закрываем как порт, так и connection
-                        port.close()
+                        //port.close()
 
                     } catch (exception: Exception) {
                         arrayList.add(CdcPortData(0, 0,0))
                     }
+                }
+
+                // При закрытии любого порта, выполняется и закрытие connection. По этой причине,
+                // если прибор предоставляет несколько port-ов (например, Raspberry Pi Pico предоставляет
+                // два порта: REPL и CDC), то закрытие любого порта приведёт к тому, что информация по
+                // остальным портам не будет получена
+                if (driver.ports.size > 0) {
+                    driver.ports[0].close()
                 }
 
                 // Уведомляем адаптер ListView об изменении списка доступных портов
