@@ -71,7 +71,7 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this@MainActivity, "Granted", Toast.LENGTH_LONG).show()
 
                     val message = findViewById<TextView>(R.id.connection_msg)
-                    message.text = "Try one more time!"
+                    message.text = getString(R.string.try_one_more_time)
                 }
                 else
                 {
@@ -179,15 +179,15 @@ class MainActivity : AppCompatActivity() {
                     try {
                         port.open(connection)
 
-                        var writeEnpointAddr = 0
+                        var writeEndpointAddr = 0
                         if (port.writeEndpoint != null)
-                            writeEnpointAddr = port.writeEndpoint.address
+                            writeEndpointAddr = port.writeEndpoint.address
 
-                        var readEnpointAddr = 0
+                        var readEndpointAddr = 0
                         if (port.readEndpoint != null)
-                            readEnpointAddr = port.readEndpoint.address
+                            readEndpointAddr = port.readEndpoint.address
 
-                        arrayList.add(CdcPortData(port.portNumber, writeEnpointAddr, readEnpointAddr))
+                        arrayList.add(CdcPortData(port.portNumber, writeEndpointAddr, readEndpointAddr))
 
                         // Закрываем как порт, так и connection
                         port.close()
@@ -286,7 +286,8 @@ class MainActivity : AppCompatActivity() {
 
                     runOnUiThread {
                         val textView = findViewById<TextView>(R.id.connection_msg)
-                        textView.text = "Written\n"
+                        //textView.text = "Written\n"
+                        textView.text = getString(R.string.written)
                     }
 
                 } catch (ignored: java.lang.Exception) {
