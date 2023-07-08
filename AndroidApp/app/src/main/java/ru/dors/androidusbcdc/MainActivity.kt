@@ -269,6 +269,7 @@ class MainActivity : AppCompatActivity() {
                 serialInputOutputManager =
                     SerialInputOutputManager(port, serialInputOutputListener)
                 serialInputOutputManager!!.readTimeout = 0
+
                 // Обработка сообщений от микроконтроллера будет осуществляться в отдельном потоке
                 val rx = Executors.newSingleThreadExecutor()
                 rx.submit(serialInputOutputManager)
@@ -292,7 +293,6 @@ class MainActivity : AppCompatActivity() {
 
                     runOnUiThread {
                         val textView = findViewById<TextView>(R.id.connection_msg)
-                        //textView.text = "Written\n"
                         textView.text = getString(R.string.written)
                     }
 
