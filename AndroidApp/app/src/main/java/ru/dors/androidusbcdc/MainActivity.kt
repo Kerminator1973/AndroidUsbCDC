@@ -93,7 +93,6 @@ class MainActivity : AppCompatActivity() {
             // в соответствующий Activity
             val intent = Intent(this, OptionsActivity::class.java)
             startActivity(intent)
-
             true
         }
 
@@ -131,13 +130,12 @@ class MainActivity : AppCompatActivity() {
         button.setOnClickListener(object : View.OnClickListener {
             override fun onClick(v: View?) {
 
-                val message = findViewById<TextView>(R.id.connection_msg)
-
                 val manager = getSystemService (Context.USB_SERVICE)
-
                 val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(
                     manager as UsbManager?
                 )
+
+                val message = findViewById<TextView>(R.id.connection_msg)
                 if (availableDrivers.isEmpty()) {
                     message.text = getString(R.string.text_driver_unavailable)
                     return
@@ -191,18 +189,12 @@ class MainActivity : AppCompatActivity() {
 
                         arrayList.add(CdcPortData(port.portNumber, writeEnpointAddr, readEnpointAddr))
 
-                        // TODO: порт нужно закрывать, т.к. потом не удасться подключиться ещё раз
-                        // Нюанс состоит в том, что close() ещё и connection закрывает
-                        //port.close();
+                        // Закрываем как порт, так и connection
+                        port.close()
 
                     } catch (exception: Exception) {
                         arrayList.add(CdcPortData(0, 0,0))
                     }
-                }
-
-                // Закрываем как порт, так и connection
-                if (driver.ports.size > 0) {
-                    driver.ports[0].close()
                 }
 
                 // Уведомляем адаптер ListView об изменении списка доступных портов
