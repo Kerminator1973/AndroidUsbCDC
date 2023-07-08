@@ -190,9 +190,6 @@ class MainActivity : AppCompatActivity() {
 
                         arrayList.add(CdcPortData(port.portNumber, writeEndpointAddr, readEndpointAddr))
 
-                        // Закрываем как порт, так и connection
-                        //port.close()
-
                     } catch (exception: Exception) {
                         arrayList.add(CdcPortData(0, 0,0))
                     }
