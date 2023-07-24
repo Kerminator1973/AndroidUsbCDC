@@ -1,5 +1,28 @@
 # Особенности разработки приложений для Android
 
+## Android Debug Bridge (adb)
+
+Android - операционная система семейства Linux.
+
+Для запуска консольных команд может быть использована утилита **Android Debug Bridge**, которая входит в состав Android Studio.
+
+Используя компиляторы, входящие в состав Adroid Studio **Native Development** Kit (NDK) мы можем скомпилировать исходные текстов на ассемблере (arm-linux-androideabi-as), Си, или C++. Затем можно сгенерировать исполняемый файл, используя линковщик (arm-linux-androideabi-ld). Например:
+
+``` shell
+arm-linux-androideabi-as -al=hello_arm.lst -o hello_arm.o hello_arm.s
+arm-linux-androideabi-ld  -o hello_arm hello_arm.o
+```
+
+Для информации - файлы с исходными текстами на ассемблере имеют расширение "s".
+
+Используя adb мы можем загрузить исполняемый файл на телефон и запустить его:
+
+``` shell
+adb push hello_arm /data/local/tmp/hello_arm
+adb shell chmod +x /data/local/tmp/hello_arm
+adb shell /data/local/tmp/hello_arm
+```
+
 ## Toast
 
 Типовой способ использования Toast в Kotlin выглядит так:
