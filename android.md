@@ -6,11 +6,50 @@ Android - операционная система семейства Linux.
 
 Для запуска консольных команд может быть использована утилита **Android Debug Bridge**, которая входит в состав Android Studio.
 
-Используя компиляторы, входящие в состав Adroid Studio **Native Development** Kit (NDK) мы можем скомпилировать исходные текстов на ассемблере (arm-linux-androideabi-as), Си, или C++. Затем можно сгенерировать исполняемый файл, используя линковщик (arm-linux-androideabi-ld). Например:
+Используя компиляторы, входящие в состав Android Studio **Native Development** Kit (NDK) мы можем скомпилировать исходные текстов на ассемблере (arm-linux-androideabi-as), Си, или C++. Затем можно сгенерировать исполняемый файл, используя линковщик (arm-linux-androideabi-ld). Например:
 
 ``` shell
 arm-linux-androideabi-as -al=hello_arm.lst -o hello_arm.o hello_arm.s
 arm-linux-androideabi-ld  -o hello_arm hello_arm.o
+```
+
+Android SDK в MS Windows может находиться в папке "c:\Users\[пользователь]\AppData\Local\Android\Sdk". Соответветственно, система сборки находится в папке "c:\Users\[пользователь]\AppData\Local\Android\Sdk\ndk\[версия]".
+
+Пример приложения на C++:
+
+```cpp
+#include <iostream>
+using namespace std;
+int main()
+{
+	cout << "Hello from Android Phone\n";
+}
+```
+
+Для сборки приложения из файла с исходными текстами на С++, следует установить путь к 
+
+```shell
+SET PATH="c:\Users\kermi\AppData\Local\Android\Sdk\ndk\25.2.9519653\toolchains\llvm\prebuilt\windows-x86_64\bin";%PATH%
+```
+
+Проверить установку можно командой: `echo %PATH%`
+
+Сборка проекта осуществляется командой (для архитектуры целевого процессора aarch64; архитектура процессора хоста задаётся командой PATH):
+
+```shell
+aarch64-linux-android33-clang++ --static -o helloworld helloworld.cpp
+```
+
+В результате сборки, будет создан файл "helloworld" - это исполняемый ELF-файл для Android.
+
+Критически важным может оказаться использование ключа `--static`, который подключает C++ Runtime статически. Если этого не сделать, то приложение будет требовать Runtime версии, соответствующей имени скрипта сборки. Например, если скрипт сборки называется `aarch64-linux-android33-clang++`, то приложение будет требовать Runtime от Android 33. Это означает, что например на Android 10 это приложение на запуститься, т.к. у него будет отсутствовать необходимый ему Runtime. Следует заметить, что статическая линковка C++ Runtime добавляет к размеру исполняемого файла около 8 Мб.
+
+Закладка Android "Device Explorer" позволяет просматривать файлы и процессы подключенного мобильного телефона.
+
+Утилита adb размещается в папке "c:\Users\[пользователь]\AppData\Local\Android\Sdk\platform-tools\adb". Можно добавить её командой:
+
+```shell
+SET PATH="c:\Users\kermi\AppData\Local\Android\Sdk\platform-tools";%PATH%
 ```
 
 Для информации - файлы с исходными текстами на ассемблере имеют расширение "s".
@@ -18,9 +57,9 @@ arm-linux-androideabi-ld  -o hello_arm hello_arm.o
 Используя adb мы можем загрузить исполняемый файл на телефон и запустить его:
 
 ``` shell
-adb push hello_arm /data/local/tmp/hello_arm
-adb shell chmod +x /data/local/tmp/hello_arm
-adb shell /data/local/tmp/hello_arm
+adb push helloworld /data/local/tmp/helloworld
+adb shell chmod +x /data/local/tmp/helloworld
+adb shell /data/local/tmp/helloworld
 ```
 
 ## Toast
