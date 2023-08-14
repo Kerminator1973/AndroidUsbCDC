@@ -134,14 +134,15 @@ class MainActivity : AppCompatActivity() {
                 val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(
                     manager as UsbManager?
                 )
+                if (availableDrivers.isEmpty()) return
+
+                val driver = availableDrivers[0]
 
                 val message = findViewById<TextView>(R.id.connection_msg)
                 if (availableDrivers.isEmpty()) {
                     message.text = getString(R.string.text_driver_unavailable)
                     return
                 }
-
-                val driver = availableDrivers[0]
 
                 // Выводим информацию о подключенном устройстве
                 val textViewDevice = findViewById<TextView>(R.id.textViewDevice)
@@ -226,7 +227,6 @@ class MainActivity : AppCompatActivity() {
             override fun onClick(v: View?) {
 
                 val manager = getSystemService (Context.USB_SERVICE)
-
                 val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(
                     manager as UsbManager?
                 )
@@ -234,8 +234,10 @@ class MainActivity : AppCompatActivity() {
 
                 // Подключаемся к устройству
                 val driver = availableDrivers[0]
-                val port = driver.ports[selectedPort]
                 val connection = manager.openDevice(driver.device) ?: return
+
+                val port = driver.ports[selectedPort]
+
                 val message = findViewById<TextView>(R.id.connection_msg)
 
                 try {
