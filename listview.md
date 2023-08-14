@@ -131,17 +131,18 @@ class CdcPortsAdapter(private val context: Context, private val arrayList: java.
         return position.toLong()
     }
 
-    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View? {
+    override fun getView(position: Int, reusedConvertView: View?, parent: ViewGroup): View? {
+        val convertView : View? = reusedConvertView ?: LayoutInflater.from(context).inflate(R.layout.row, parent, false)
+        if (null != convertView) {
+            idNumber = convertView.findViewById(R.id.idNumber)
+            idNumber.text = arrayList[position].getId().toString()
 
-        var convertView: View?
-        convertView = LayoutInflater.from(context).inflate(R.layout.row, parent, false)
-        idNumber = convertView.findViewById(R.id.idNumber)
-        writeEndpoint = convertView.findViewById(R.id.writeEndpoint)
-        readEndpoint = convertView.findViewById(R.id.readEndpoint)
+            writeEndpoint = convertView.findViewById(R.id.writeEndpoint)
+            writeEndpoint.text = "Write Endpoint: " + arrayList[position].getWriteEndpoint()
 
-        idNumber.text = arrayList[position].getId().toString()
-        writeEndpoint.text = "Write Endpoint: " + arrayList[position].getWriteEndpoint()
-        readEndpoint.text = "Read Endpoint: " + arrayList[position].getReadEndpoint()
+            readEndpoint = convertView.findViewById(R.id.readEndpoint)
+            readEndpoint.text = "Read Endpoint: " + arrayList[position].getReadEndpoint()
+        }
 
         return convertView
     }
@@ -151,6 +152,8 @@ class CdcPortsAdapter(private val context: Context, private val arrayList: java.
 Класс является производным от **BaseAdapter**.
 
 В этом определении, в классе определены и проинициализированы: context, который используется для доступа к ресурсам приложения и arrayList, в котором хранятся данные для отображения.
+
+**ВАЖНО**: ListView пытается повторно использовать convertView. Первый раз он передаётся в getView()нулевым, конструируется и возвращается обратно в ListView. В случае необходимости сформировать ещё одну строки списка, повторно используется (recycled) ранее созданный convertView.
 
 ## Передача данных в Adapter
 
