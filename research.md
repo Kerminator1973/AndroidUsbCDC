@@ -47,3 +47,23 @@ override fun onCreate(savedInstanceState: Bundle?) {
 ```
 
 При нажатии на кнопку "Button" выполняется только один обработчик - тот, который был назначен последним. В Logcat мы увидим только одно сообщение: "_The second Listener is handling the click event..._". Это поведение объясняет, почему в множестве примеров обработчик события определён как лямбда-функция - отсутствует риск бесконечного дублирования обработчиков событий, при их повторном назначении.
+
+Соответственно, для того, чтобы прекратить обработку события, достаточно написать следующий код:
+
+```kt
+button.setOnClickListener(null)
+```
+
+## Что просходит при вызове return@setOnClickListener в обработчике?
+
+В экспериментальном примере добавлен следующий код:
+
+```kt
+button.setOnClickListener {
+    Log.d("Kermit", "The listener is handling the click event...")
+    return@setOnClickListener
+    Log.d("Kermit", "This part of code is executing...")
+}
+```
+
+В приведенном выше примере, вторая запись в лог не будет добавлена. Конструкция `return@setOnClickListener` работает как обычный **return**. Особенность кода состоит в том, что обычный return не может быть скомпилирован: _'return' is not allowed here_
