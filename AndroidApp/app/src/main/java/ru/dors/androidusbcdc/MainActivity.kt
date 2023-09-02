@@ -43,6 +43,9 @@ class MainActivity : AppCompatActivity() {
     // Номер порта, который был выбран пользователем
     private var selectedPort: Int = 0
 
+    // Объект, посредством которого осуществляется взаимодействие по USB CDC
+    private var mPort : UsbSerialPort? = null
+
     // Методы onStart() и onStop() используются для организации подписки и отказа
     // от подписки на события, связанные с получением права работы с устройством USB CDC
     override fun onStart() {
@@ -236,23 +239,28 @@ class MainActivity : AppCompatActivity() {
                 val driver = availableDrivers[0]
                 val connection = manager.openDevice(driver.device) ?: return
 
-                val port = driver.ports[selectedPort]
+                // Вызов метод close() должен завершить поток, который слушает последовательный порт
+                // в данный момент времени
+                mPort?.close()
+
+                // Получаем новый порт
+                mPort = driver.ports[selectedPort]
 
                 val message = findViewById<TextView>(R.id.connection_msg)
 
                 try {
 
-                    port.open(connection)
+                    mPort?.open(connection)
 
                     // Устанавливаем скорость взаимодействия с прибором в зависимости от настройки
                     val speed = if (useDefaultSpeed) 115200 else 921600
-                    port.setParameters(speed, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
+                    mPort?.setParameters(speed, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
 
                     // Сигнал готовности терминала: Pico и Android начинают обмен данными
-                    port.dtr = true
+                    mPort?.dtr = true
                     // Request To Send signal — возведение это сигнала необходимо для начала
                     // обмена данными между Arduino/Pico и Android
-                    port.rts = true
+                    mPort?.rts = true
                 } catch (exception: Exception) {
                     message.text = getString(R.string.text_exception)
                 }
@@ -269,7 +277,7 @@ class MainActivity : AppCompatActivity() {
                     }
 
                 serialInputOutputManager =
-                    SerialInputOutputManager(port, serialInputOutputListener)
+                    SerialInputOutputManager(mPort, serialInputOutputListener)
                 serialInputOutputManager!!.readTimeout = 0
 
                 // Обработка сообщений от микроконтроллера будет осуществляться в отдельном потоке
@@ -291,7 +299,7 @@ class MainActivity : AppCompatActivity() {
                         ubyteArrayOf(0xB4U, 0x00U, 0x81U, 0x00U, 0x74U).toByteArray()
                     else ubyteArrayOf(0x02U, 0x03U, 0x06U, 0x37U, 0xFEU, 0xC7U).toByteArray()
 
-                    port.write(request, 0)
+                    mPort?.write(request, 0)
 
                     runOnUiThread {
                         val textView = findViewById<TextView>(R.id.connection_msg)

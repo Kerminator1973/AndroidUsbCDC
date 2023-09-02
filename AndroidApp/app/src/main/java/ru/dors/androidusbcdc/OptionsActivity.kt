@@ -42,10 +42,10 @@ class OptionsActivity : AppCompatActivity() {
         protocolGroup.setOnCheckedChangeListener { _, checkedId ->
             findViewById<RadioButton>(checkedId)?.apply {
 
-                val prefs =  getSharedPreferences("USB_CDC_PREFS", Context.MODE_PRIVATE)
+                val cdcPrefs =  getSharedPreferences("USB_CDC_PREFS", Context.MODE_PRIVATE)
                 val protocol = (checkedId == R.id.dslip_button)
 
-                val editor = prefs.edit()
+                val editor = cdcPrefs.edit()
                 editor.putBoolean(getString(R.string.protocol_type), protocol)
                 editor.apply()
             }
@@ -55,10 +55,10 @@ class OptionsActivity : AppCompatActivity() {
         speedGroup.setOnCheckedChangeListener { _, checkedId ->
             findViewById<RadioButton>(checkedId)?.apply {
 
-                val prefs =  getSharedPreferences("USB_CDC_PREFS", Context.MODE_PRIVATE)
+                val cdcPrefs =  getSharedPreferences("USB_CDC_PREFS", Context.MODE_PRIVATE)
                 val speed = (checkedId == R.id.default_speed_button)
 
-                val editor = prefs.edit()
+                val editor = cdcPrefs.edit()
                 editor.putBoolean(getString(R.string.speed_value), speed)
                 editor.apply()
             }
