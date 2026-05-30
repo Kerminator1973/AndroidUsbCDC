@@ -144,3 +144,50 @@ override fun onStart() {
     )
 }
 ```
+
+### Следующее замечание
+
+Замечание к коду: _"Mutable implicit PendingIntent will throw an exception once this app starts targeting Android 14 or above, follow either of these recommendations: for an existing PendingIntent use FLAG_NO_CREATE and for a new PendingIntent either make it immutable or make the Intent within explicit"_, относится к коду:
+
+```java
+val usbPermissionIntent = PendingIntent.getBroadcast(
+    this@MainActivity,
+    0,
+    Intent(INTENT_ACTION_GRANT_USB),    // Это просто идентификационная строка
+    flags
+)
+```
+
+**Суть проблемы**:
+
+Предупреждение говорит о двух нарушениях одновременно:
+
+- Mutable — flags не содержит FLAG_IMMUTABLE
+- Implicit — Intent(INTENT_ACTION_GRANT_USB) создаёт неявный интент (только строка-действие, без компонента)
+
+В Android 14+ такая комбинация бросает исключение.
+
+Переработанный код:
+
+```java
+val usbPermissionIntent = PendingIntent.getBroadcast(
+    this@MainActivity,
+    0,
+    Intent(INTENT_ACTION_GRANT_USB).apply {
+        setPackage(packageName) // делает Intent явным — привязывает к этому приложению
+    },
+    PendingIntent.FLAG_IMMUTABLE
+)
+manager.requestPermission(driver.device, usbPermissionIntent)
+return
+```
+
+### Неиспользуемый параметр в описании исключения
+
+В Kotlin можно заменить неиспользуемый параметр на символ `_`, что явно указывает на то, что результат операции не используется. Решение в моём коде:
+
+```java
+} catch (_: Exception) {
+    arrayList.add(CdcPortData(0, 0,0))
+}
+```

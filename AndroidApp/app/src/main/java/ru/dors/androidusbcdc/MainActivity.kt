@@ -119,7 +119,7 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(findViewById(R.id.app_toolbar))
 
         // Считываем актуальные параметры для работы с приложением
-        val prefs =  getSharedPreferences("USB_CDC_PREFS", Context.MODE_PRIVATE)
+        val prefs =  getSharedPreferences("USB_CDC_PREFS", MODE_PRIVATE)
         useDSlipProtocol = prefs.getBoolean(getString(R.string.protocol_type),true)
         useDefaultSpeed = prefs.getBoolean(getString(R.string.speed_value),true)
 
@@ -139,7 +139,7 @@ class MainActivity : AppCompatActivity() {
         button.setOnClickListener(object : View.OnClickListener {
             override fun onClick(v: View?) {
 
-                val manager = getSystemService (Context.USB_SERVICE)
+                val manager = getSystemService (USB_SERVICE)
                 val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(
                     manager as UsbManager?
                 )
@@ -171,12 +171,13 @@ class MainActivity : AppCompatActivity() {
                     // при подключении кабеля к мобильному телефону
 
                     // add UsbManager.requestPermission(driver.getDevice(), ..) handling here
-                    val flags = PendingIntent.FLAG_MUTABLE
                     val usbPermissionIntent = PendingIntent.getBroadcast(
                         this@MainActivity,
                         0,
-                        Intent(INTENT_ACTION_GRANT_USB),    // Это просто идентификационная строка
-                        flags
+                        Intent(INTENT_ACTION_GRANT_USB).apply {
+                            setPackage(packageName) // делает Intent явным — привязывает к этому приложению
+                        },
+                        PendingIntent.FLAG_IMMUTABLE
                     )
                     manager.requestPermission(driver.device, usbPermissionIntent)
                     return
@@ -200,7 +201,7 @@ class MainActivity : AppCompatActivity() {
 
                         arrayList.add(CdcPortData(port.portNumber, writeEndpointAddr, readEndpointAddr))
 
-                    } catch (exception: Exception) {
+                    } catch (_: Exception) {
                         arrayList.add(CdcPortData(0, 0,0))
                     }
                 }
@@ -235,7 +236,7 @@ class MainActivity : AppCompatActivity() {
         buttonExchange.setOnClickListener(object : View.OnClickListener {
             override fun onClick(v: View?) {
 
-                val manager = getSystemService (Context.USB_SERVICE)
+                val manager = getSystemService (USB_SERVICE)
                 val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(
                     manager as UsbManager?
                 )
@@ -267,7 +268,7 @@ class MainActivity : AppCompatActivity() {
                     // Request To Send signal — возведение это сигнала необходимо для начала
                     // обмена данными между Arduino/Pico и Android
                     mPort?.rts = true
-                } catch (exception: Exception) {
+                } catch (_: Exception) {
                     message.text = getString(R.string.text_exception)
                 }
 
@@ -302,10 +303,10 @@ class MainActivity : AppCompatActivity() {
 
                     // CCNet: identification
                     //val request = ubyteArrayOf(0x02U, 0x03U, 0x06U, 0x37U, 0xFEU, 0xC7U).toByteArray()
-
                     val request = if (useDSlipProtocol)
-                        ubyteArrayOf(0xB4U, 0x00U, 0x81U, 0x00U, 0x74U).toByteArray()
-                    else ubyteArrayOf(0x02U, 0x03U, 0x06U, 0x37U, 0xFEU, 0xC7U).toByteArray()
+                        byteArrayOf(0xB4.toByte(), 0x00, 0x81.toByte(), 0x00, 0x74)
+                    else
+                        byteArrayOf(0x02, 0x03, 0x06, 0x37, 0xFE.toByte(), 0xC7.toByte())
 
                     mPort?.write(request, 0)
 
@@ -314,7 +315,7 @@ class MainActivity : AppCompatActivity() {
                         textView.text = getString(R.string.written)
                     }
 
-                } catch (ignored: java.lang.Exception) {
+                } catch (_: java.lang.Exception) {
                     runOnUiThread {
                         val textView = findViewById<TextView>(R.id.connection_msg)
                         textView.append("Exception during write command\n")
@@ -324,7 +325,7 @@ class MainActivity : AppCompatActivity() {
 
                 // Мы отправили сообщение и serialInputOutputManager должен выйти из scope.
                 // Вероятно, его нужно остановить здесь
-                serialInputOutputManager?.stop();
+                serialInputOutputManager?.stop()
 
                 // TODO: когда закрывать порт?
                 //port.close();
