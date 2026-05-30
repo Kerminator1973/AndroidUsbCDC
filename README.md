@@ -6,6 +6,22 @@
 
 Для работы с внешним устройством рекомендуется использовать Java-библиотеку от [mik3y](https://github.com/mik3y/usb-serial-for-android). На эту библиотеку ссылается sandworm в статье [Работа с устройствами USB в Android](https://habr.com/ru/articles/277093/) на Habr.com.
 
+Библиотека развивается. Историю публикации версий библиотеки можно посмотреть на GitHub сайте в [списке Tag-ов](https://github.com/mik3y/usb-serial-for-android/tags). Каждый год выходит два тэга с обновленной версией библиотеки. Актуальная версия на май 2026 года - 3.10.0 от 4 декабря 2025 г.
+
+Для того, чтобы обновить сборку в Gradle-проекте, можно ли зайти в "app\build.gradle", либо в раздел "Project Structures" -> "Dependencies" в Android Studio и заменить указанный номер сборки на желаемый. Было:
+
+```gradle
+dependencies {
+    implementation 'com.github.mik3y:usb-serial-for-android:3.5.1'
+```
+
+Стало:
+
+```gradle
+dependencies {
+    implementation 'com.github.mik3y:usb-serial-for-android:3.10.0'
+```
+
 Для исследования взаимодействия с USB-приборами с Android, в статье [How to communicate with Android through USB interface on nRF52820 / nRF52833 / nRF52840](https://jimmywongiot.com/2020/04/21/how-to-communicate-with-android-through-usb-interface-on-nrf52820-nrf52833-nrf52840/) рекомендуется использовать утилиту SimpleUsbTerminal от Kai Morich.
 
 На сайте [USB Serial for Android](https://github.com/mik3y/usb-serial-for-android/tree/master/usbSerialExamples/src/main/java/com/hoho/android/usbserial) есть пример кода на Java, который демонстрирует использование библиотеки mik3y.
