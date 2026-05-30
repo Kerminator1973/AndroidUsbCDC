@@ -20,7 +20,6 @@ import androidx.appcompat.app.AppCompatActivity
 import com.hoho.android.usbserial.driver.UsbSerialPort
 import com.hoho.android.usbserial.driver.UsbSerialProber
 import com.hoho.android.usbserial.util.SerialInputOutputManager
-import java.util.concurrent.Executors
 
 
 class MainActivity : AppCompatActivity() {
@@ -203,7 +202,7 @@ class MainActivity : AppCompatActivity() {
                 // если прибор предоставляет несколько port-ов (например, Raspberry Pi Pico предоставляет
                 // два порта: REPL и CDC), то закрытие любого порта приведёт к тому, что информация по
                 // остальным портам не будет получена
-                if (driver.ports.size > 0) {
+                if (driver.ports.isNotEmpty()) {
                     driver.ports[0].close()
                 }
 
@@ -281,8 +280,10 @@ class MainActivity : AppCompatActivity() {
                 serialInputOutputManager!!.readTimeout = 0
 
                 // Обработка сообщений от микроконтроллера будет осуществляться в отдельном потоке
-                val rx = Executors.newSingleThreadExecutor()
-                rx.submit(serialInputOutputManager)
+                //val rx = Executors.newSingleThreadExecutor()
+                //rx.submit(serialInputOutputManager)
+
+                serialInputOutputManager!!.start()
 
                 // Запускаем отдельный поток, который будет отправлять в устройство одну и
                 // ту же команду каждый 500 мс
@@ -313,6 +314,10 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 //}, 0, 500, TimeUnit.MILLISECONDS)
+
+                // Мы отправили сообщение и serialInputOutputManager должен выйти из scope.
+                // Вероятно, его нужно остановить здесь
+                serialInputOutputManager?.stop();
 
                 // TODO: когда закрывать порт?
                 //port.close();
