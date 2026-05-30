@@ -20,6 +20,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.hoho.android.usbserial.driver.UsbSerialPort
 import com.hoho.android.usbserial.driver.UsbSerialProber
 import com.hoho.android.usbserial.util.SerialInputOutputManager
+import androidx.core.content.ContextCompat
 
 
 class MainActivity : AppCompatActivity() {
@@ -50,8 +51,14 @@ class MainActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         val intentFilter = IntentFilter(INTENT_ACTION_GRANT_USB)
-        registerReceiver(usbCdcStateReceiver, intentFilter)
+        ContextCompat.registerReceiver(
+            this,
+            usbCdcStateReceiver,
+            intentFilter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
     }
+
     override fun onStop() {
         super.onStop()
         unregisterReceiver(usbCdcStateReceiver)

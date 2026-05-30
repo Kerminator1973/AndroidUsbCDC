@@ -109,3 +109,38 @@ android {
 ```
 
 А SDK 26 - это Android 8 Oreo. Это объясняет работоспособность приложения на телефоне с Android 10.
+
+## Замечания к приложению
+
+Первое предупреждение: _"usbCdcStateReceiver is missing RECEIVER_EXPORTED or RECEIVER_NOT_EXPORTED flag for unprotected broadcasts registered for UsbCdcApp.GRANT_USB"_
+
+```java
+override fun onStart() {
+    super.onStart()
+    val intentFilter = IntentFilter(INTENT_ACTION_GRANT_USB)
+    registerReceiver(usbCdcStateReceiver, intentFilter)
+}
+```
+
+**Причина предупреждения**:
+
+Начиная с Android 12 (API 31), а строго обязательно с Android 13 (API 33), при динамической регистрации BroadcastReceiver необходимо явно указывать флаг видимости ресивера. Android хочет знать, должен ли ваш ресивер принимать broadcasts от других приложений или только от вашего.
+
+Исправление замечания:
+
+```java
+import androidx.core.content.ContextCompat
+```
+
+```java
+override fun onStart() {
+    super.onStart()
+    val intentFilter = IntentFilter(INTENT_ACTION_GRANT_USB)
+    ContextCompat.registerReceiver(
+        this,
+        usbCdcStateReceiver,
+        intentFilter,
+        ContextCompat.RECEIVER_NOT_EXPORTED
+    )
+}
+```
