@@ -35,6 +35,10 @@ I have identified 4 critical areas that require architectural refactoring:
 - Data Access Layer Mixing: The MainActivity is responsible for UI logic, USB connection logic, reading preferences, and managing the data stream listener (SerialInputOutputManager). This high degree of coupling makes the code difficult to test and maintain.
 - Efficiency in Adapter (ViewHolder Pattern): The CdcPortsAdapter implementation ignores the modern Android ViewHolder pattern. Instead, it relies on findViewById and assumes the convertView structure, which is an outdated and prone-to-errors approach in modern Android development.
 
+>Согласен с наружением Clean Code. Так и есть. Действительно нужно выделить работу с прибором по USB в отдельный класс.
+>
+>Нужно почитать, что такое **Android ViewHolder pattern**.
+
 **Refactored Code**
 
 To implement robust concurrency and improve separation of concerns, I will introduce a dedicated Repository/Service layer (e.g., UsbConnectionManager) and modernize the UI state management using Kotlin Coroutines and Flow for handling asynchronous data streams.
