@@ -35,7 +35,9 @@ I have identified 4 critical areas that require architectural refactoring:
 - Data Access Layer Mixing: The MainActivity is responsible for UI logic, USB connection logic, reading preferences, and managing the data stream listener (SerialInputOutputManager). This high degree of coupling makes the code difficult to test and maintain.
 - Efficiency in Adapter (ViewHolder Pattern): The CdcPortsAdapter implementation ignores the modern Android ViewHolder pattern. Instead, it relies on findViewById and assumes the convertView structure, which is an outdated and prone-to-errors approach in modern Android development.
 
->Согласен с нарушением Clean Code. Действительно нужно выделить работу с прибором по USB в отдельный класс.
+### Комментарий по "ключевым улучшениям", предложенным Gemma 4
+
+Согласен с нарушением Clean Code. Действительно нужно выделить работу с прибором по USB в отдельный класс.
 
 Без использования **ViewHolder** в адаптере списка при каждой отрисовке элемента:
 
@@ -69,6 +71,8 @@ override fun getView(position: Int, reusedConvertView: View?, parent: ViewGroup)
 ```
 
 Кажется, что CdcPortsAdapter один из главных кандидатов на замену. Изменение на даст сильного улучшения в производительности (список очень маленький), но в качестве шаблона для заимствования - прекрасная иллюстрация.
+
+## Предложения по рефакторингу кода
 
 **Refactored Code**
 

@@ -1,17 +1,13 @@
 package ru.dors.androidusbcdc
 
-class CdcPortData(private var id: Int, private var writeEndpoint: Int,
-                  private var readEndpoint: Int
-) {
-    fun getId(): Int {
-        return id
-    }
-
-    fun getWriteEndpoint(): Int {
-        return writeEndpoint
-    }
-
-    fun getReadEndpoint(): Int {
-        return readEndpoint
-    }
-}
+// Класс для хранения данных в списке найденных Endpoints (точки обмена данными с CDC-устройствами).
+// Используется синтаксический сахар, который позволяет проинициализировать поля класса в конструкторе.
+// Поскольку переменные имеют модификатор val, после создания объекта поля доступны только для
+// чтения.
+// Модификатор data создаёт equals(), hashCode() и toString() для удобства использования объектов.
+// В конкретном случае это избыточно, но как пример использования - очень разумная реализация
+data class CdcPortData(
+    val id: Int,
+    val writeEndpoint: Int,
+    val readEndpoint: Int
+)
