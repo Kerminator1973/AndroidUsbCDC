@@ -35,9 +35,40 @@ I have identified 4 critical areas that require architectural refactoring:
 - Data Access Layer Mixing: The MainActivity is responsible for UI logic, USB connection logic, reading preferences, and managing the data stream listener (SerialInputOutputManager). This high degree of coupling makes the code difficult to test and maintain.
 - Efficiency in Adapter (ViewHolder Pattern): The CdcPortsAdapter implementation ignores the modern Android ViewHolder pattern. Instead, it relies on findViewById and assumes the convertView structure, which is an outdated and prone-to-errors approach in modern Android development.
 
->Согласен с наружением Clean Code. Так и есть. Действительно нужно выделить работу с прибором по USB в отдельный класс.
->
->Нужно почитать, что такое **Android ViewHolder pattern**.
+>Согласен с нарушением Clean Code. Действительно нужно выделить работу с прибором по USB в отдельный класс.
+
+Без использования **ViewHolder** в адаптере списка при каждой отрисовке элемента:
+
+- Вызывается метод findViewById() для поиска дочерних View внутри элемента списка
+- Происходит раздувание (inflation) макета для каждого нового элемента
+
+Эти операции требуют значительных ресурсов CPU, особенно в длинных списках, что приводит к:
+
+- "лагающей" прокрутке
+- повышенному расходу батареи
+- увеличению нагрузки на процессор
+
+Действительно, в моём коде не используется ViewHolder и для каждого из элементов используется findViewById():
+
+```kt
+override fun getView(position: Int, reusedConvertView: View?, parent: ViewGroup): View? {
+    val convertView : View? = reusedConvertView ?: LayoutInflater.from(context).inflate(R.layout.row, parent, false)
+    if (null != convertView) {
+        idNumber = convertView.findViewById(R.id.idNumber)
+        idNumber.text = arrayList[position].getId().toString()
+
+        writeEndpoint = convertView.findViewById(R.id.writeEndpoint)
+        writeEndpoint.text = "Write Endpoint: " + arrayList[position].getWriteEndpoint()
+
+        readEndpoint = convertView.findViewById(R.id.readEndpoint)
+        readEndpoint.text = "Read Endpoint: " + arrayList[position].getReadEndpoint()
+    }
+
+    return convertView
+}
+```
+
+Кажется, что CdcPortsAdapter один из главных кандидатов на замену. Изменение на даст сильного улучшения в производительности (список очень маленький), но в качестве шаблона для заимствования - прекрасная иллюстрация.
 
 **Refactored Code**
 
