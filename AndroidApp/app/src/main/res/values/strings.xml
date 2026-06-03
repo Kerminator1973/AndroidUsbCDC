@@ -13,5 +13,5 @@
     <string name="protocol_type">ProtocolType</string>
     <string name="speed_value">SpeedValue</string>
     <string name="try_one_more_time">Try one more time!</string>
-    <string name="written">Written\n</string>
+    <string name="connection_message_template">Writing to interface %s\n\n</string>
 </resources>

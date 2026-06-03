@@ -312,7 +312,14 @@ class MainActivity : AppCompatActivity() {
 
                     runOnUiThread {
                         val textView = findViewById<TextView>(R.id.connection_msg)
-                        textView.text = getString(R.string.written)
+
+                        val portString = selectedPort.toString()
+                        val finalMessage = getString(
+                            R.string.connection_message_template,
+                            portString
+                        )
+
+                        textView.text = finalMessage
                     }
 
                 } catch (_: java.lang.Exception) {
