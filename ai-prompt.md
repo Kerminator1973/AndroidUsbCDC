@@ -899,7 +899,7 @@ UsbConnectionManager.disconnect() is explicitly called in onStop() and at the st
 Use separate code blocks for the suggested refactoring. Keep the explanation concise but highly technical.
 ```
 
-Следует заметить, что для Claude Sonnet задача оказалась очень не простой и её решение заняло несколько минут.
+>Следует заметить, что для Claude Sonnet задача оказалась очень не простой и её решение заняло несколько минут. Стоимость генерации кода - около 100 рублей.
 
 Key Areas for Improvement
 
@@ -937,23 +937,37 @@ CdcPortData.kt — unchanged, already idiomatic.
 
 ### Extensions.kt (new)
 
-```kt
-package ru.dors.androidusbcdc
+Оригинальный код выглядел следующим образом:
 
-/**
- * Formats a ByteArray as a monospaced hex dump with 12 bytes per line —
- * the maximum that fits the phone screen with a monospace typeface.
- * Fixes the original off-by-one: `0..size` produced a spurious empty trailing line.
- */
+```kt
+fun ByteArray.toHex(): String {
+
+    val sb = StringBuilder()
+    for (i in 0..this.size step 12) {
+
+        val untilValue : Int = kotlin.math.min(this.size, i + 12)
+        val range = this.slice(i until untilValue)
+        val hexStr = range.joinToString(separator = " ") { eachByte -> "%02x".format(eachByte) }
+        sb.append(hexStr)
+        sb.append("\n")
+    }
+```
+
+После одной неудачной попытки, Claude Sonnet 4.6 переписал код так:
+
+
+```kt
 fun ByteArray.toHex(): String = buildString {
-    for (i in 0 until size step 12) {
-        val chunk = slice(i until minOf(size, i + 12))
-        append(chunk.joinToString(" ") { "%02x".format(it) })
+    val bytes = this@toHex
+    for (i in 0 until bytes.size step 12) {
+        val chunk = bytes.slice(i until minOf(bytes.size, i + 12))
+        append(chunk.joinToString(" ") { "%02x".format(it.toInt() and 0xFF) })
         append('\n')
     }
 }
 ```
 
+Т.е. он сделал slice и избежал использования `kotlin.math`. Отлично! Это минорный, но полезный рефакторинг.
 
 ### AppPreferences.kt (new)
 

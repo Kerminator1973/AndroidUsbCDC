@@ -339,22 +339,4 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
-
-    // Метод выводит байтовый массив в виде строки с шестнадцатеричными числами в блоках
-    // по двенадцать чисел. В общем случае, только 12 чисел помещается на экране телефона
-    // при использовании моноширинного шрифта
-    fun ByteArray.toHex(): String {
-
-        val sb = StringBuilder()
-        for (i in 0..this.size step 12) {
-
-            val untilValue : Int = kotlin.math.min(this.size, i + 12)
-            val range = this.slice(i until untilValue)
-            val hexStr = range.joinToString(separator = " ") { eachByte -> "%02x".format(eachByte) }
-            sb.append(hexStr)
-            sb.append("\n")
-        }
-
-        return sb.toString()
-    }
 }
