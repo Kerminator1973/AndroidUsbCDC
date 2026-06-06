@@ -356,6 +356,8 @@ class MainActivity : AppCompatActivity() {
 }
 ```
 
+>При сборке возникло множество ошибок, которые требуется устранить.
+
 **UsbConnectionManager.kt (NEW CORE SERVICE LAYER)**
 
 This service handles all complex USB logic, concurrency, and state management, completely separating it from the Activity.
@@ -622,6 +624,9 @@ val activity = context as? MainActivity ?: return
 ```
 
 Файл стал компилироваться, но его использование требует значительной переработки MainActivity.
+
+Что касается реализации, то Gemma 4 использует в коде Kotlin Coroutines, в частности объекты MutableStateFlow и StateFlow.
+
 
 **CdcPortsAdapter.kt (Refactored: Incorporating ViewHolders)**
 
