@@ -877,3 +877,598 @@ Why: The original code had ambiguous points regarding when and how ports and con
 Improvement: We formalized the connection lifecycle:
 All connection logic now wraps resource opening/closing in try-finally blocks.
 UsbConnectionManager.disconnect() is explicitly called in onStop() and at the start of any new connection attempt (initiateConnectionExchange), ensuring that regardless of how the flow exits, all USB handles are properly released.
+
+## Попытка сгенерировать работоспособный код используя Claude Sonnet 4.6 Thinking
+
+Промпт:
+
+```
+Я прикрепил несколько файлов Android-приложения, которые осуществляют обмен данными по USB между приложением и контроллером Arduino. Код работает, но он нуждается в улучшении и применении современных лучших практик.
+
+Мои основные цели:
+
+1. Повысить читаемость и упростить сопровождение кода
+2. Отделить пользовательский интерфейс от кода обменна данными по USB. Класс, включающий работу по USB должен называться "UsbConnectionManager.kt"
+3. Для реализации многопоточности следует использовать Kotlin Coroutines
+
+Действуй как Senior Software Architect. Выполни анализ всех файлов и предложи следующее:
+
+1. **Key Areas for Improvement:** Identify 3-5 specific places in the code that are inefficient (e.g., redundant database queries, nested loops, poor variable naming).
+2. **Refactored Code:** Provide a fully refactored version of the files. Do not just fix the problems; show me how to make the *whole system* cleaner.
+
+Use separate code blocks for the suggested refactoring. Keep the explanation concise but highly technical.
+```
+
+Следует заметить, что для Claude Sonnet задача оказалась очень не простой и её решение заняло несколько минут.
+
+Key Areas for Improvement
+
+1. God Activity — Blatant SRP Violation
+
+All USB logic (driver discovery, permission requests, port scanning, parameter configuration, sending frames, and receiving data) is embedded inside anonymous View.OnClickListener objects directly in onCreate(). MainActivity simultaneously manages the view hierarchy, serial port parameters, and data formatting.
+
+2. Critical Logic Bug: SerialInputOutputManager is stopped on the same line it starts
+
+```kt
+serialInputOutputManager!!.start()
+// ... a few lines later, synchronously:
+serialInputOutputManager?.stop() // kills the read loop immediately — onNewData is dead code
+```
+
+3. Redundant USB driver enumeration
+
+UsbSerialProber.getDefaultProber().findAllDrivers(manager as UsbManager?) is called identically in two button handlers with no caching. Each call performs a full USB bus scan.
+
+4. Java-style SAM anonymous classes in Kotlin
+
+```kt
+setOnClickListener(object : View.OnClickListener { override fun onClick(v: View?) { ... } }) — Kotlin SAM interfaces collapse to a simple lambda.
+```
+
+5. No single source of truth for preferences
+
+```kt
+Magic string "USB_CDC_PREFS" and getString(R.string.protocol_type/speed_value) are duplicated across two Activity files. getSharedPreferences() is also called multiple times within the same method in OptionsActivity. Additionally, CdcPortsAdapter.getItem() returns position (an Int) instead of the actual CdcPortData object.
+```
+
+### Refactored Code
+
+CdcPortData.kt — unchanged, already idiomatic.
+
+### Extensions.kt (new)
+
+```kt
+package ru.dors.androidusbcdc
+
+/**
+ * Formats a ByteArray as a monospaced hex dump with 12 bytes per line —
+ * the maximum that fits the phone screen with a monospace typeface.
+ * Fixes the original off-by-one: `0..size` produced a spurious empty trailing line.
+ */
+fun ByteArray.toHex(): String = buildString {
+    for (i in 0 until size step 12) {
+        val chunk = slice(i until minOf(size, i + 12))
+        append(chunk.joinToString(" ") { "%02x".format(it) })
+        append('\n')
+    }
+}
+```
+
+
+### AppPreferences.kt (new)
+
+```kt
+package ru.dors.androidusbcdc
+
+import android.content.Context
+import android.content.SharedPreferences
+
+/**
+ * Single source of truth for all persistent application preferences.
+ * Eliminates the "USB_CDC_PREFS" magic string and duplicate getSharedPreferences()
+ * calls scattered across multiple Activities.
+ *
+ * Key values intentionally match the original R.string resource values to remain
+ * backward-compatible with preferences saved by previous app versions.
+ */
+class AppPreferences(context: Context) {
+
+    private val prefs: SharedPreferences =
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    var useDSlipProtocol: Boolean
+        get() = prefs.getBoolean(KEY_PROTOCOL, DEFAULT_USE_DSLIP)
+        set(value) = prefs.edit().putBoolean(KEY_PROTOCOL, value).apply()
+
+    var useDefaultSpeed: Boolean
+        get() = prefs.getBoolean(KEY_SPEED, DEFAULT_USE_DEFAULT_SPEED)
+        set(value) = prefs.edit().putBoolean(KEY_SPEED, value).apply()
+
+    companion object {
+        private const val PREFS_NAME             = "USB_CDC_PREFS"
+        const val KEY_PROTOCOL                   = "protocol_type"
+        const val KEY_SPEED                      = "speed_value"
+        private const val DEFAULT_USE_DSLIP      = true   // DSlip
+        private const val DEFAULT_USE_DEFAULT_SPEED = true   // 115 200 baud
+    }
+}
+```
+
+### UsbConnectionManager.kt (new)
+
+```kt
+package ru.dors.androidusbcdc
+
+import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbManager
+import com.hoho.android.usbserial.driver.UsbSerialPort
+import com.hoho.android.usbserial.driver.UsbSerialProber
+import com.hoho.android.usbserial.util.SerialInputOutputManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.withContext
+
+/**
+ * Manages the full lifecycle of a USB CDC serial connection.
+ *
+ * Responsibilities:
+ *  - Discovering USB serial drivers and enumerating their ports
+ *  - Opening/closing the serial port and configuring line parameters
+ *  - Bridging the callback-based [SerialInputOutputManager] to Kotlin [SharedFlow]
+ *  - Sending raw byte frames to the connected device
+ *
+ * Threading model: blocking USB I/O is dispatched to [Dispatchers.IO] via suspend
+ * functions. Callbacks from [SerialInputOutputManager] use [MutableSharedFlow.tryEmit],
+ * which is thread-safe and non-blocking — no internal CoroutineScope required.
+ *
+ * The owner (Activity / ViewModel) must call [release] when done.
+ */
+class UsbConnectionManager(private val usbManager: UsbManager) {
+
+    // ---- Public streams -------------------------------------------------------
+
+    /** Emits every raw byte frame received from the USB device. */
+    private val _incomingData = MutableSharedFlow<ByteArray>(extraBufferCapacity = 64)
+    val incomingData: SharedFlow<ByteArray> = _incomingData.asSharedFlow()
+
+    /** Emits human-readable error descriptions for the UI layer to surface. */
+    private val _errors = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    val errors: SharedFlow<String> = _errors.asSharedFlow()
+
+    // ---- Private state -------------------------------------------------------
+
+    private var activePort: UsbSerialPort? = null
+    private var ioManager: SerialInputOutputManager? = null
+
+    // ---- Public API ----------------------------------------------------------
+
+    /**
+     * Returns the first USB serial device detected, or null if none is attached.
+     * Callers should verify [UsbManager.hasPermission] on the result before
+     * proceeding to [scanPorts] or [connect].
+     */
+    fun findDevice(): UsbDevice? =
+        UsbSerialProber.getDefaultProber()
+            .findAllDrivers(usbManager)
+            .firstOrNull()
+            ?.device
+
+    /**
+     * Enumerates all CDC serial ports exposed by the first connected device.
+     *
+     * Note: closing any [UsbSerialPort] also closes the shared
+     * [android.hardware.usb.UsbDeviceConnection]. To avoid breaking
+     * mid-enumeration on multi-port devices (e.g. Raspberry Pi Pico with
+     * REPL + CDC ports), only the first port is closed after the scan completes.
+     */
+    suspend fun scanPorts(): List<CdcPortData> = withContext(Dispatchers.IO) {
+        val driver = UsbSerialProber.getDefaultProber()
+            .findAllDrivers(usbManager).firstOrNull()
+            ?: return@withContext emptyList()
+
+        val connection = usbManager.openDevice(driver.device)
+            ?: return@withContext emptyList()
+
+        val ports = driver.ports.map { port ->
+            runCatching {
+                port.open(connection)
+                CdcPortData(
+                    id            = port.portNumber,
+                    writeEndpoint = port.writeEndpoint?.address ?: 0,
+                    readEndpoint  = port.readEndpoint?.address  ?: 0
+                )
+            }.getOrDefault(CdcPortData(id = 0, writeEndpoint = 0, readEndpoint = 0))
+        }
+
+        // Closing the first port closes the shared UsbDeviceConnection
+        driver.ports.firstOrNull()?.runCatching { close() }
+        ports
+    }
+
+    /**
+     * Opens the USB serial port at [portIndex], configures line parameters,
+     * and starts the background read loop.
+     *
+     * @param portIndex    Zero-based index into the list returned by [scanPorts].
+     * @param useHighSpeed If true — 921 600 baud; otherwise 115 200 baud.
+     * @return true on success; false if the device could not be opened
+     *         (e.g. permission was revoked between scan and connect).
+     */
+    suspend fun connect(portIndex: Int, useHighSpeed: Boolean): Boolean =
+        withContext(Dispatchers.IO) {
+            val driver = UsbSerialProber.getDefaultProber()
+                .findAllDrivers(usbManager).firstOrNull()
+                ?: return@withContext false
+
+            val connection = usbManager.openDevice(driver.device)
+                ?: return@withContext false
+
+            disconnect() // Stop any existing IO manager and close the previous port
+
+            val port = driver.ports[portIndex]
+            activePort = port
+
+            try {
+                val baudRate = if (useHighSpeed) BAUD_RATE_HIGH else BAUD_RATE_DEFAULT
+                port.open(connection)
+                port.setParameters(baudRate, DATA_BITS, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
+                port.dtr = true  // Data Terminal Ready: signals the host is ready
+                port.rts = true  // Request To Send: required for Arduino/Pico to begin exchange
+                startListening()
+                true
+            } catch (e: Exception) {
+                _errors.tryEmit("Connection failed: ${e.message}")
+                false
+            }
+        }
+
+    /**
+     * Sends a raw byte frame to the connected device.
+     *
+     * @return [Result.success] wrapping bytes written, or [Result.failure] with
+     *         the underlying exception (including if no port is active).
+     */
+    suspend fun send(data: ByteArray): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            checkNotNull(activePort) { "No active port — call connect() first." }
+                .write(data, WRITE_TIMEOUT_MS)
+            Unit
+        }
+    }
+
+    /** Stops the IO read loop and closes the active serial port. */
+    fun disconnect() {
+        ioManager?.stop()
+        ioManager = null
+        activePort?.runCatching { close() }
+        activePort = null
+    }
+
+    /** Convenience alias — must be called when the owning component is destroyed. */
+    fun release() = disconnect()
+
+    // ---- Private helpers -----------------------------------------------------
+
+    private fun startListening() {
+        val port = activePort ?: return
+        ioManager = SerialInputOutputManager(
+            port,
+            object : SerialInputOutputManager.Listener {
+                // tryEmit is thread-safe and non-blocking: no coroutine launch needed
+                override fun onNewData(data: ByteArray) {
+                    _incomingData.tryEmit(data)
+                }
+                override fun onRunError(e: Exception) {
+                    _errors.tryEmit("IO error: ${e.message}")
+                }
+            }
+        ).also {
+            it.readTimeout = 0
+            it.start()
+        }
+    }
+
+    private companion object {
+        const val BAUD_RATE_DEFAULT = 115_200
+        const val BAUD_RATE_HIGH    = 921_600
+        const val DATA_BITS         = 8
+        const val WRITE_TIMEOUT_MS  = 1_000
+    }
+}
+```
+
+### MainActivity.kt
+
+```kt
+package ru.dors.androidusbcdc
+
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.graphics.Typeface
+import android.hardware.usb.UsbDevice
+import android.hardware.usb.UsbManager
+import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
+import android.widget.AdapterView.OnItemClickListener
+import android.widget.Button
+import android.widget.ListView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.launch
+
+class MainActivity : AppCompatActivity() {
+
+    // ---- Dependencies --------------------------------------------------------
+    private lateinit var prefs: AppPreferences
+    private lateinit var usbManager: UsbManager
+    private lateinit var connectionManager: UsbConnectionManager
+
+    // ---- UI references (cached once after setContentView) --------------------
+    private lateinit var connectionMsgView: TextView
+    private lateinit var devicePidVidView: TextView
+    private lateinit var deviceNameView: TextView
+    private lateinit var portsAdapter: CdcPortsAdapter
+
+    // ---- State ---------------------------------------------------------------
+    private val portList = mutableListOf<CdcPortData>()
+    private var selectedPortIndex = 0
+
+    // Computed lazily so that packageName (available after attach) is safe to read
+    private val actionGrantUsb by lazy { "$packageName.GRANT_USB" }
+
+    // ---- Lifecycle -----------------------------------------------------------
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+        setSupportActionBar(findViewById(R.id.app_toolbar))
+
+        prefs          = AppPreferences(this)
+        usbManager     = getSystemService(USB_SERVICE) as UsbManager
+        connectionManager = UsbConnectionManager(usbManager)
+
+        bindViews()
+        setupPortsList()
+        setupButtonListeners()
+        observeConnectionManager()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.registerReceiver(
+            this, usbPermissionReceiver,
+            IntentFilter(actionGrantUsb),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    override fun onStop() {
+        super.onStop()
+        unregisterReceiver(usbPermissionReceiver)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        connectionManager.release()
+    }
+
+    // ---- Options menu --------------------------------------------------------
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.options_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
+        R.id.action_settings -> {
+            startActivity(Intent(this, OptionsActivity::class.java))
+            true
+        }
+        else -> super.onOptionsItemSelected(item)
+    }
+
+    // ---- Private setup -------------------------------------------------------
+
+    private fun bindViews() {
+        connectionMsgView = findViewById<TextView>(R.id.connection_msg).also {
+            it.typeface = Typeface.MONOSPACE
+        }
+        devicePidVidView = findViewById(R.id.textViewDevice)
+        deviceNameView   = findViewById(R.id.textViewIdentification)
+    }
+
+    private fun setupPortsList() {
+        portsAdapter = CdcPortsAdapter(this, portList)
+        findViewById<ListView>(R.id.listView).apply {
+            adapter = portsAdapter
+            onItemClickListener = OnItemClickListener { _, _, index, _ ->
+                selectedPortIndex = index
+                Toast.makeText(applicationContext, index.toString(), Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun setupButtonListeners() {
+        findViewById<Button>(R.id.button).setOnClickListener         { onScanClicked() }
+        findViewById<Button>(R.id.buttonExchange).setOnClickListener { onExchangeClicked() }
+        findViewById<Button>(R.id.buttonClear).setOnClickListener    { connectionMsgView.text = "" }
+    }
+
+    /**
+     * Collects [UsbConnectionManager.incomingData] and [UsbConnectionManager.errors].
+     * [repeatOnLifecycle] automatically suspends collection when the Activity goes below
+     * STARTED (screen off / backgrounded) and resumes it on return to foreground,
+     * preventing unnecessary work and background thread wakeups.
+     */
+    private fun observeConnectionManager() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    connectionManager.incomingData.collect { data ->
+                        connectionMsgView.append(data.toHex())
+                    }
+                }
+                launch {
+                    connectionManager.errors.collect { error ->
+                        connectionMsgView.append("Error: $error\n")
+                    }
+                }
+            }
+        }
+    }
+
+    // ---- Button handlers -----------------------------------------------------
+
+    private fun onScanClicked() {
+        val device = connectionManager.findDevice()
+        if (device == null) {
+            connectionMsgView.text = getString(R.string.text_driver_unavailable)
+            return
+        }
+        if (!usbManager.hasPermission(device)) {
+            connectionMsgView.text = getString(R.string.text_need_permission)
+            requestUsbPermission(device)
+            return
+        }
+
+        devicePidVidView.text = "pid = ${device.productId}, vid = ${device.vendorId}"
+        deviceNameView.text   = device.deviceName
+
+        lifecycleScope.launch {
+            val ports = connectionManager.scanPorts()
+            portList.clear()
+            portList.addAll(ports)
+            portsAdapter.notifyDataSetChanged()
+        }
+    }
+
+    private fun onExchangeClicked() {
+        lifecycleScope.launch {
+            val connected = connectionManager.connect(
+                portIndex    = selectedPortIndex,
+                useHighSpeed = !prefs.useDefaultSpeed
+            )
+            if (!connected) {
+                connectionMsgView.text = getString(R.string.text_exception)
+                return@launch
+            }
+
+            connectionManager.send(buildCommand())
+                .onSuccess {
+                    connectionMsgView.text = getString(
+                        R.string.connection_message_template,
+                        selectedPortIndex.toString()
+                    )
+                }
+                .onFailure {
+                    connectionMsgView.append("Exception during write command\n")
+                }
+        }
+    }
+
+    // ---- Private helpers -----------------------------------------------------
+
+    /** Assembles the protocol-specific identification command frame. */
+    private fun buildCommand(): ByteArray = if (prefs.useDSlipProtocol) {
+        byteArrayOf(0xB4.toByte(), 0x00, 0x81.toByte(), 0x00, 0x74)       // DSlip: identification
+    } else {
+        byteArrayOf(0x02, 0x03, 0x06, 0x37, 0xFE.toByte(), 0xC7.toByte()) // CCNet: identification
+    }
+
+    private fun requestUsbPermission(device: UsbDevice) {
+        val intent = Intent(actionGrantUsb).apply { setPackage(packageName) }
+        val pendingIntent = PendingIntent.getBroadcast(
+            this, 0, intent, PendingIntent.FLAG_IMMUTABLE
+        )
+        usbManager.requestPermission(device, pendingIntent)
+    }
+
+    // ---- USB permission receiver ---------------------------------------------
+
+    private val usbPermissionReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action != actionGrantUsb) return
+            val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+            connectionMsgView.text = getString(
+                if (granted) R.string.try_one_more_time else R.string.text_need_permission
+            )
+            Toast.makeText(
+                this@MainActivity,
+                if (granted) "Granted" else "Denied",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+}
+```
+
+### OptionsActivity.kt
+
+```kt
+package ru.dors.androidusbcdc
+
+import android.os.Bundle
+import android.widget.RadioButton
+import android.widget.RadioGroup
+import androidx.appcompat.app.AppCompatActivity
+
+class OptionsActivity : AppCompatActivity() {
+
+    private lateinit var prefs: AppPreferences
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_options)
+
+        setSupportActionBar(findViewById(R.id.back_toolbar))
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+
+        prefs = AppPreferences(this)
+
+        initProtocolGroup()
+        initSpeedGroup()
+    }
+
+    private fun initProtocolGroup() {
+        val buttonId = if (prefs.useDSlipProtocol) R.id.dslip_button else R.id.ccnet_button
+        findViewById<RadioButton>(buttonId).isChecked = true
+
+        findViewById<RadioGroup>(R.id.protocolGroup).setOnCheckedChangeListener { _, checkedId ->
+            prefs.useDSlipProtocol = (checkedId == R.id.dslip_button)
+        }
+    }
+
+    private fun initSpeedGroup() {
+        val buttonId = if (prefs.useDefaultSpeed) R.id.default_speed_button else R.id.megabit_speed_button
+        findViewById<RadioButton>(buttonId).isChecked = true
+
+        findViewById<RadioGroup>(R.id.speedGroup).setOnCheckedChangeListener { _, checkedId ->
+            prefs.useDefaultSpeed = (checkedId == R.id.default_speed_button)
+        }
+    }
+}
+```
+
+### Architectural Summary
+
+| Before                                      | After                                        |
+|---------------------------------------------|----------------------------------------------|
+| USB logic in anonymous click listeners      | Isolated in UsbConnectionManager             |
+| runOnUiThread {} callbacks                  | SharedFlow collected via lifecycleScope      |
+| SerialInputOutputManager killed immediately | Runs continuously; stopped only in onDestroy |
+| Magic strings duplicated across 2 files     | Single AppPreferences with typed properties  |
+| ByteArray.toHex() inside MainActivity       | Top-level in Extensions.kt                   |
+| java.util.ArrayList in adapter              | MutableList                                  |
+
+tryEmit() is used in the SerialInputOutputManager callbacks instead of scope.launch { emit() } — it is thread-safe, non-blocking, and eliminates the need for an internal CoroutineScope inside UsbConnectionManager entirely.
