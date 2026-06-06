@@ -1474,6 +1474,8 @@ class OptionsActivity : AppCompatActivity() {
 }
 ```
 
+>Добавление "AppPreferences.kt" и рефакторинг "OptionsActivity.kt" выглядить вполне разумным. Экспресс-проверка - код работоспособен.
+
 ### Architectural Summary
 
 | Before                                      | After                                        |
