@@ -587,6 +587,42 @@ class UsbConnectionManager(
 }
 ```
 
+При попытке компиляции кода возник ряд ошибок, в частности:
+
+- В android.hardware.usb отсутсвует класс UsbConnection, но есть **UsbDeviceConnection**, который близок по смыслу. В библиотеке **android.hardware.usb** также есть такие классы, как: UsbManager, UsbDevice, UsbAccessory, UsbInterface, UsbEndpoint и UsbRequest. Замечу, что я использую часть этих классов, в частности UsbManager, для получения прав на использование приложением USB интерефейса
+- Также код использует UsbSerialProber.Driver. В библиотеке [mik3y](https://github.com/mik3y/usb-serial-for-android) есть просто UsbSerialDriver
+
+Также компилятору не понравился вот этот код:
+
+```kt
+override fun onNewData(data: ByteArray) {
+    // This callback is executed on the background thread managed by the library.
+    // We must launch a coroutine on the Main Dispatcher to update the UI.
+    // In a ViewModel context, this data would be emitted via a Flow.
+    (context as? MainActivity)?.let { activity ->
+        // We pass the data back to the activity to handle the TextView update
+        activity.handleIncomingData(data.toHex())
+    }
+}
+```
+
+Описание ошибки: "Cannot infer type for this parameter. Specify it explicitly".
+
+Решение первой проблемы:
+
+```kt
+val activity = context as? MainActivity ?: return
+```
+
+До момента, пока не изменён интерфейс главного Activity приложения, закомментировал отправку результатов работы:
+
+```kt
+// TODO: посылать данные в главное окно
+//activity.handleIncomingData(data.toHex())
+```
+
+Файл стал компилироваться, но его использование требует значительной переработки MainActivity.
+
 **CdcPortsAdapter.kt (Refactored: Incorporating ViewHolders)**
 
 This updates the adapter to use the highly recommended ViewHolder pattern, which significantly improves performance by avoiding repeated findViewById calls during scrolling/binding.
