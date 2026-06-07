@@ -4,13 +4,14 @@ import android.content.Context
 import android.content.SharedPreferences
 
 /**
- * Single source of truth for all persistent application preferences.
- * Eliminates the "USB_CDC_PREFS" magic string and duplicate getSharedPreferences()
- * calls scattered across multiple Activities.
+ * Данных класс обеспечивает единый достоверный источник для всех постоянных настроек приложения.
+ * Класс устраняет магическую строку "USB_CDC_PREFS" и дублирование функции getSharedPreferences()
+ * в вызовах, разбросанных по нескольким классам.
  *
- * Key values intentionally match the original R.string resource values to remain
- * backward-compatible with preferences saved by previous app versions.
+ * Значения ключей намеренно соответствуют исходным значениям ресурсов R.string, чтобы сохранить
+ * обратную совместимость с настройками, сохраненными в предыдущих версиях приложения.
  */
+
 class AppPreferences(context: Context) {
 
     private val prefs: SharedPreferences =

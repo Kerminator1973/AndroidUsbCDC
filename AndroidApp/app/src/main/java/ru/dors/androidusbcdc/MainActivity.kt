@@ -25,11 +25,10 @@ import androidx.core.content.ContextCompat
 
 class MainActivity : AppCompatActivity() {
 
-    var serialInputOutputManager: SerialInputOutputManager? = null
+    // Добавлена зависимость от класса, обеспечивающего доступ к настройкам приложения
+    private lateinit var prefs: AppPreferences
 
-    // Параметры работы приложения
-    var useDSlipProtocol = true
-    var useDefaultSpeed = true
+    var serialInputOutputManager: SerialInputOutputManager? = null
 
     // Определяем идентификационную строку, которая используется при запросе
     // прав доступа к устройству
@@ -119,9 +118,7 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(findViewById(R.id.app_toolbar))
 
         // Считываем актуальные параметры для работы с приложением
-        val prefs =  getSharedPreferences("USB_CDC_PREFS", MODE_PRIVATE)
-        useDSlipProtocol = prefs.getBoolean(getString(R.string.protocol_type),true)
-        useDefaultSpeed = prefs.getBoolean(getString(R.string.speed_value),true)
+        prefs = AppPreferences(this)
 
         // Изменяем шрифт, которым выводится ответ подключенного прибора. По умолчанию,
         // Android не использует моноширинный шрифт, из-за чего полученные данные не выравнены
@@ -260,7 +257,7 @@ class MainActivity : AppCompatActivity() {
                     mPort?.open(connection)
 
                     // Устанавливаем скорость взаимодействия с прибором в зависимости от настройки
-                    val speed = if (useDefaultSpeed) 115200 else 921600
+                    val speed = if (prefs.useDefaultSpeed) 115200 else 921600
                     mPort?.setParameters(speed, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
 
                     // Сигнал готовности терминала: Pico и Android начинают обмен данными
@@ -298,15 +295,13 @@ class MainActivity : AppCompatActivity() {
                 //var co100Ms = Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate({
                 try {
 
-                    // DSlip: identification
-                    //val request = ubyteArrayOf(0xB4U, 0x00U, 0x81U, 0x00U, 0x74U).toByteArray()
-
-                    // CCNet: identification
-                    //val request = ubyteArrayOf(0x02U, 0x03U, 0x06U, 0x37U, 0xFEU, 0xC7U).toByteArray()
-                    val request = if (useDSlipProtocol)
+                    val request = if (prefs.useDSlipProtocol) {
+                        // DSlip: identification
                         byteArrayOf(0xB4.toByte(), 0x00, 0x81.toByte(), 0x00, 0x74)
-                    else
+                    } else {
+                        // CCNet: identification
                         byteArrayOf(0x02, 0x03, 0x06, 0x37, 0xFE.toByte(), 0xC7.toByte())
+                    }
 
                     mPort?.write(request, 0)
 
