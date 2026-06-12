@@ -243,7 +243,7 @@ class MainActivity : AppCompatActivity() {
                 val driver = availableDrivers[0]
                 val connection = manager.openDevice(driver.device) ?: return
 
-                // Вызов метод close() должен завершить поток, который слушает последовательный порт
+                // Вызов метода close() должен завершить поток, который слушает последовательный порт
                 // в данный момент времени
                 mPort?.close()
 
@@ -271,7 +271,14 @@ class MainActivity : AppCompatActivity() {
 
                 val serialInputOutputListener: SerialInputOutputManager.Listener =
                     object : SerialInputOutputManager.Listener {
-                        override fun onRunError(ignored: Exception) {}
+
+                        override fun onRunError(errorMsg: Exception) {
+                            runOnUiThread {
+                                val textView = findViewById<TextView>(R.id.connection_msg)
+                                textView.append(errorMsg.message + "\n")
+                            }
+                        }
+
                         override fun onNewData(data: ByteArray) {
                             runOnUiThread {
                                 val textView = findViewById<TextView>(R.id.connection_msg)
@@ -282,6 +289,8 @@ class MainActivity : AppCompatActivity() {
 
                 serialInputOutputManager =
                     SerialInputOutputManager(mPort, serialInputOutputListener)
+
+                // Осуществляется блокирующая операция чтения ответа микроконтроллера
                 serialInputOutputManager!!.readTimeout = 0
 
                 // Обработка сообщений от микроконтроллера будет осуществляться в отдельном потоке
