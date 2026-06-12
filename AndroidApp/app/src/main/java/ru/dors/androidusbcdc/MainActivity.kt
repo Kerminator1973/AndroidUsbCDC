@@ -241,11 +241,12 @@ class MainActivity : AppCompatActivity() {
 
                 // Подключаемся к устройству
                 val driver = availableDrivers[0]
-                val connection = manager.openDevice(driver.device) ?: return
 
                 // Вызов метода close() должен завершить поток, который слушает последовательный порт
                 // в данный момент времени
                 mPort?.close()
+
+                val connection = manager.openDevice(driver.device) ?: return
 
                 // Получаем новый порт
                 mPort = driver.ports[selectedPort]
@@ -267,6 +268,7 @@ class MainActivity : AppCompatActivity() {
                     mPort?.rts = true
                 } catch (_: Exception) {
                     message.text = getString(R.string.text_exception)
+                    return
                 }
 
                 val serialInputOutputListener: SerialInputOutputManager.Listener =
@@ -336,7 +338,7 @@ class MainActivity : AppCompatActivity() {
 
                 // Мы отправили сообщение и serialInputOutputManager должен выйти из scope.
                 // Вероятно, его нужно остановить здесь
-                serialInputOutputManager?.stop()
+                //serialInputOutputManager?.stop()
 
                 // TODO: когда закрывать порт?
                 //port.close();
