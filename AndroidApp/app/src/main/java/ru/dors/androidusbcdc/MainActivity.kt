@@ -1,6 +1,5 @@
 package ru.dors.androidusbcdc
 
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -8,7 +7,6 @@ import android.content.IntentFilter
 import android.graphics.Typeface
 import android.hardware.usb.UsbManager
 import android.os.Bundle
-import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.AdapterView.OnItemClickListener
@@ -20,13 +18,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.hoho.android.usbserial.driver.UsbSerialProber
 
-// Removed unused imports that deal with internal communication logic (e.g., UsbSerialPort, SerialInputOutputManager)
-
 class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListener {
 
     private lateinit var prefs: AppPreferences
 
-    // Use the manager instance to handle all serial communications
+    // Для взвимодействия с микроконтроллером будет использовать экземпляр вспомогательного
+    // класса UsbConnectionManager
     private var usbManager: UsbConnectionManager = UsbConnectionManager(this)
 
     // Определяем идентификационную строку, которая используется при запросе
@@ -38,8 +35,9 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
     private var arrayList: ArrayList<CdcPortData> = ArrayList()
     private var adapter: CdcPortsAdapter? = null
 
-    // Номер порта, который был выбран пользователем (index)
-    private var selectedPortIndex: Int = 0 // Renamed variable for clarity
+    // Номер порта, который был выбран пользователем (index). Raspberry Pi Pico предоставляет
+    // два порта: REPL и data exchange
+    private var selectedPortIndex: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,7 +48,7 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
         // Считываем актуальные параметры для работы с приложением
         prefs = AppPreferences(this)
 
-        // Setup UI elements (same as before)
+        // Настраиваем элементы пользовательского интерфейса
         val dumpView = findViewById<TextView>(R.id.connection_msg)
         dumpView.typeface = Typeface.MONOSPACE
 
@@ -58,29 +56,30 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
         listView = findViewById(R.id.listView)
         listView.adapter = adapter
 
-        // === Setup Listeners for the Manager (The central point of communication) ===
+        // Устанавливаем обработчики callback-вызовов от класса низкоуровневого
+        // взаимодействия с микроконтроллером по USB CDC
         usbManager.setConnectionListener(this)
 
-        // --- Button Click Listener 1: Initial Connection Attempt ---
-        val initialConnectButton = findViewById<Button>(R.id.button) // Assuming this button starts discovery/connection
+        // Кнопка: начальное подключение к микроконтроллеру, в том числе, для получения pid/vid
+        val initialConnectButton = findViewById<Button>(R.id.button)
         initialConnectButton.setOnClickListener {
             handleInitialDiscoveryAndConnect()
         }
 
-        // --- Button Click Listener 2: Exchange (Reconnect using selected port) ---
+        // Кнопка: установить соединение и послать микроконтроллеру команду
         val buttonExchange = findViewById<Button>(R.id.buttonExchange)
         buttonExchange.setOnClickListener {
             handleConnectionAttempt()
         }
 
-        // --- Button Clear ---
+        // Кнопка: очистить поле с результатами логирования
         val buttonClear = findViewById<Button>(R.id.buttonClear)
         buttonClear.setOnClickListener {
             findViewById<TextView>(R.id.connection_msg).text = ""
         }
     }
 
-    // --- Lifecycle Management (Kept the same) ---
+    // Методы управления жизненным циклом
 
     override fun onStart() {
         super.onStart()
@@ -98,10 +97,10 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
         unregisterReceiver(usbCdcStateReceiver)
     }
 
-    // --- Callback Handling (Implemented ConnectionListener interface) ---
+    // --- Обработчики callback-сообщений микроконтроллера (от UsbConnectionManager)
 
     /**
-     * Called by UsbConnectionManager when data is received from the USB CDC device.
+     * Callback-метод вызывается, когда получены данные от USB CDC устройства
      */
     override fun onDataReceived(hexString: String) {
         runOnUiThread {
@@ -111,18 +110,20 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
     }
 
     /**
-     * Called by UsbConnectionManager when an error occurs during connection/data transfer.
+     * Вызывается UsbConnectionManager когда возникает какая-то ошибка при подключении,
+     * или передаче данных
      */
     override fun onError(message: String) {
         runOnUiThread {
             val textView = findViewById<TextView>(R.id.connection_msg)
             textView.append("\n[ERROR] $message")
         }
+
         Toast.makeText(this, "Connection Error", Toast.LENGTH_SHORT).show()
     }
 
     /**
-     * Called by UsbConnectionManager when the connection is successfully established.
+     * Вызывается UsbConnectionManager когда соединение с микроконтроллером успешно установлено
      */
     override fun onConnectionSuccess(message: String) {
         runOnUiThread {
@@ -133,7 +134,7 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
     }
 
     /**
-     * Called by UsbConnectionManager when a connection attempt fails.
+     * Вызывается UsbConnectionManager когда попытка соединения была неуспешной
      */
     override fun onConnectionFailure(message: String) {
         runOnUiThread {
@@ -143,8 +144,7 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
         Toast.makeText(this, "Connection Failed", Toast.LENGTH_SHORT).show()
     }
 
-    // --- UI Listeners (Simplified logic using the manager) ---
-
+    // Обработчик нажатия кнопки "Options" в пользовательском интерфейсе
     override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
         R.id.action_settings -> {
             val intent = Intent(this, OptionsActivity::class.java)
@@ -154,7 +154,7 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
         else -> super.onOptionsItemSelected(item)
     }
 
-    // --- Private Helper Functions for Action Delegation ---
+    // --- Вспомогательные функции ---
 
     private fun handleInitialDiscoveryAndConnect() {
         val manager = getSystemService (USB_SERVICE) as android.hardware.usb.UsbManager?
@@ -166,47 +166,46 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
             return
         }
 
-        val driver = availableDrivers[0] // Use the first available device for initial check
+        // Используем первое доступное устройство для получения параметров подключения (pid/vid)
+        val driver = availableDrivers[0]
 
-        // 1. Display Device Info (UI logic remains here)
-        findViewById<TextView>(R.id.textViewDevice).text = "pid = ${driver.device.productId}, vid =  ${driver.device.vendorId}"
+        // Выводим информацию об имени устройства, а также о pid/vid
         findViewById<TextView>(R.id.textViewIdentification).text = driver.device.deviceName
 
-        // 2. Populate the port list using the manager helper
+        val textViewDevice = findViewById<TextView>(R.id.textViewDevice)
+        "pid = ${driver.device.productId}, vid =  ${driver.device.vendorId}".also { textViewDevice.text = it }
+
+        // Формируем список доступных Endpoints для взаимодействия с микроконтроллером
         arrayList.clear()
         val ports = usbManager.getAvailablePorts(manager, driver)
         arrayList.addAll(ports)
         adapter?.notifyDataSetChanged()
-
-        // 3. Initiate connection attempt (which will use the selected port index from the UI interaction later)
     }
 
+    // Обработчик выбора пользователем порта/endpoints для обмена данными
     fun onItemClickListener(view: View?, which: Int) {
-        // This listener handles setting 'selectedPortIndex' based on ListView selection
         selectedPortIndex = which
         Toast.makeText(this.applicationContext, "Selected Port $which", Toast.LENGTH_SHORT).show()
     }
 
     /**
-     * Handles the action of initiating connection using the currently selected port.
+     * Метод подключается к микроконтроллеру и передаём ему конкретную команду
      */
     private fun handleConnectionAttempt() {
+
         val manager = getSystemService (USB_SERVICE) as? android.hardware.usb.UsbManager? ?: return
         val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager)
         if (availableDrivers.isEmpty()) return
 
-        val driver = availableDrivers[0] // Assume connection attempt uses the same device found initially
+        val driver = availableDrivers[0]
 
-        // Delegate Connection Setup to the Manager
         usbManager.connectToPort(manager, driver, selectedPortIndex)
-
-        // After successful setup, start listening for data and sending initial command
         if (selectedPortIndex >= 0) {
             try {
-                // Start monitoring incoming serial data
+                // Если подключение было успешным, подписываемся на сообщения микроконтроллера
                 usbManager.startListening()
 
-                // Send the mandatory identification command
+                // Конкретная команда зависит от используемого протокола
                 val request = if (prefs.useDSlipProtocol) {
                     byteArrayOf(0xB4.toByte(), 0x00, 0x81.toByte(), 0x00, 0x74)
                 } else {
@@ -214,15 +213,16 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
                 }
                 usbManager.sendCommand(request)
 
-            } catch (e: Exception) {
-                // Handled by onError callback if communication fails immediately
+            } catch (_: Exception) {
+                // TODO: необходимо обработать исключение!
             }
         } else {
             findViewById<TextView>(R.id.connection_msg).text = "Please select a port first."
         }
     }
 
-    // --- Broadcast Receiver (Kept the same) ---
+    // Метод подписывается на системые сообщения (Broadcast Receiver). Цель - если система
+    // разрешить работу с USB CDC, метод информирует об этом пользователя
     private val usbCdcStateReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (INTENT_ACTION_GRANT_USB == intent.action) {
@@ -241,16 +241,14 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
         }
     }
 
-    // --- Initialization of the Adapter (Need to override or call setup separately since we removed onCreate's bulk logic)
+    // Возобновление подписчиков после того, как приложение вернулось из сна (после ухода в resumed)
     override fun onResume() {
         super.onResume()
-        // Re-initialize UI listeners after activity resumes
         findViewById<ListView>(R.id.listView).onItemClickListener =
             OnItemClickListener { _, _, i, _ ->
                 onItemClickListener(null, i) // Call the helper function
             }
     }
-
 }
 
 /*
