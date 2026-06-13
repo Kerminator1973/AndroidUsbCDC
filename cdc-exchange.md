@@ -10,23 +10,33 @@ serial = usb_cdc.data
 while True:
     if serial.in_waiting > 0:
         
-        has_completion = False
+        has_completion = 0
         for by in serial.read(serial.in_waiting):
         
-            if by == 199 or by == 116: # 0xC7, или 0x74
-                has_completion = True
-                print("Completion received")
+            if by == 116: # 0x74 - это CRC команды Identification протокола DSlip: 0xB4 0x00 0x81 0x00 0x74
+                has_completion = 1
+                break
+
+            elif by == 199: # 0xC7 - это CRC команды Identification протокола CCNet: 0x02 0x03 0x06 0x37 0xFE 0xC7
+                has_completion = 2
                 break
 
         serial.reset_input_buffer()
 
-        if has_completion:
+        if has_completion > 0:
 
-            output_bytes = b"\x02\x03\x2f\x44\x32\x31\x30\x42\x41\x2d\x52\x55\x42\x00\x00\x00\x00\x00\x30\x30\x31\x2d\x30\x30\x30\x30\x31\x30\x37\x32\x00\x00\x00\x00\x00\x00\x00\x03\x17\x00\x00\x00\x00\x05\x2c\x33\xf9"
+            if has_completion == 1:
+
+                # Это код ответа на команду Idenitification протокола DSlip
+                output_bytes = b"\xb4\x00\x81\x31\x00\x00\x00\x00\x00\x44\x32\x31\x30\x42\x41\x4d\x32\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x07\x00\x02\x01\x05\x00\x00\xff\x48"
+
+            else:
+
+                # Это код ответа на команду Idenitification протокола CCNET
+                output_bytes = b"\x02\x03\x2f\x44\x32\x31\x30\x42\x41\x2d\x52\x55\x42\x00\x00\x00\x00\x00\x30\x30\x31\x2d\x30\x30\x30\x30\x31\x30\x37\x32\x00\x00\x00\x00\x00\x00\x00\x03\x17\x00\x00\x00\x00\x05\x2c\x33\xf9"
+                
             serial.write(output_bytes)
             serial.flush()
-
-            print('The response has sent')
     else:
         time.sleep(0.1)
 ```
