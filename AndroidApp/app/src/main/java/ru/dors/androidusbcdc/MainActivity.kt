@@ -17,6 +17,262 @@ import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import com.hoho.android.usbserial.driver.UsbSerialProber
+
+// Removed unused imports that deal with internal communication logic (e.g., UsbSerialPort, SerialInputOutputManager)
+
+class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListener {
+
+    private lateinit var prefs: AppPreferences
+
+    // Use the manager instance to handle all serial communications
+    private var usbManager: UsbConnectionManager = UsbConnectionManager(this)
+
+    // Определяем идентификационную строку, которая используется при запросе
+    // прав доступа к устройству
+    private val INTENT_ACTION_GRANT_USB = "UsbCdcApp.GRANT_USB"
+
+    // Параметры, необходимые для создания списка выбора порта
+    private lateinit var listView: ListView
+    private var arrayList: ArrayList<CdcPortData> = ArrayList()
+    private var adapter: CdcPortsAdapter? = null
+
+    // Номер порта, который был выбран пользователем (index)
+    private var selectedPortIndex: Int = 0 // Renamed variable for clarity
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        setSupportActionBar(findViewById(R.id.app_toolbar))
+
+        // Считываем актуальные параметры для работы с приложением
+        prefs = AppPreferences(this)
+
+        // Setup UI elements (same as before)
+        val dumpView = findViewById<TextView>(R.id.connection_msg)
+        dumpView.typeface = Typeface.MONOSPACE
+
+        adapter = CdcPortsAdapter(this, arrayList)
+        listView = findViewById(R.id.listView)
+        listView.adapter = adapter
+
+        // === Setup Listeners for the Manager (The central point of communication) ===
+        usbManager.setConnectionListener(this)
+
+        // --- Button Click Listener 1: Initial Connection Attempt ---
+        val initialConnectButton = findViewById<Button>(R.id.button) // Assuming this button starts discovery/connection
+        initialConnectButton.setOnClickListener {
+            handleInitialDiscoveryAndConnect()
+        }
+
+        // --- Button Click Listener 2: Exchange (Reconnect using selected port) ---
+        val buttonExchange = findViewById<Button>(R.id.buttonExchange)
+        buttonExchange.setOnClickListener {
+            handleConnectionAttempt()
+        }
+
+        // --- Button Clear ---
+        val buttonClear = findViewById<Button>(R.id.buttonClear)
+        buttonClear.setOnClickListener {
+            findViewById<TextView>(R.id.connection_msg).text = ""
+        }
+    }
+
+    // --- Lifecycle Management (Kept the same) ---
+
+    override fun onStart() {
+        super.onStart()
+        val intentFilter = IntentFilter(INTENT_ACTION_GRANT_USB)
+        ContextCompat.registerReceiver(
+            this,
+            usbCdcStateReceiver,
+            intentFilter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    override fun onStop() {
+        super.onStop()
+        unregisterReceiver(usbCdcStateReceiver)
+    }
+
+    // --- Callback Handling (Implemented ConnectionListener interface) ---
+
+    /**
+     * Called by UsbConnectionManager when data is received from the USB CDC device.
+     */
+    override fun onDataReceived(hexString: String) {
+        runOnUiThread {
+            val textView = findViewById<TextView>(R.id.connection_msg)
+            textView.append(hexString)
+        }
+    }
+
+    /**
+     * Called by UsbConnectionManager when an error occurs during connection/data transfer.
+     */
+    override fun onError(message: String) {
+        runOnUiThread {
+            val textView = findViewById<TextView>(R.id.connection_msg)
+            textView.append("\n[ERROR] $message")
+        }
+        Toast.makeText(this, "Connection Error", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Called by UsbConnectionManager when the connection is successfully established.
+     */
+    override fun onConnectionSuccess(message: String) {
+        runOnUiThread {
+            val textView = findViewById<TextView>(R.id.connection_msg)
+            textView.append("\n[STATUS] $message")
+            Toast.makeText(this, "Connected!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /**
+     * Called by UsbConnectionManager when a connection attempt fails.
+     */
+    override fun onConnectionFailure(message: String) {
+        runOnUiThread {
+            val textView = findViewById<TextView>(R.id.connection_msg)
+            textView.append("\n[FAILURE] $message")
+        }
+        Toast.makeText(this, "Connection Failed", Toast.LENGTH_SHORT).show()
+    }
+
+    // --- UI Listeners (Simplified logic using the manager) ---
+
+    override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
+        R.id.action_settings -> {
+            val intent = Intent(this, OptionsActivity::class.java)
+            startActivity(intent)
+            true
+        }
+        else -> super.onOptionsItemSelected(item)
+    }
+
+    // --- Private Helper Functions for Action Delegation ---
+
+    private fun handleInitialDiscoveryAndConnect() {
+        val manager = getSystemService (USB_SERVICE) as android.hardware.usb.UsbManager?
+        if (manager == null) return
+
+        val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager)
+        if (availableDrivers.isEmpty()) {
+            findViewById<TextView>(R.id.connection_msg).text = getString(R.string.text_driver_unavailable)
+            return
+        }
+
+        val driver = availableDrivers[0] // Use the first available device for initial check
+
+        // 1. Display Device Info (UI logic remains here)
+        findViewById<TextView>(R.id.textViewDevice).text = "pid = ${driver.device.productId}, vid =  ${driver.device.vendorId}"
+        findViewById<TextView>(R.id.textViewIdentification).text = driver.device.deviceName
+
+        // 2. Populate the port list using the manager helper
+        arrayList.clear()
+        val ports = usbManager.getAvailablePorts(manager, driver)
+        arrayList.addAll(ports)
+        adapter?.notifyDataSetChanged()
+
+        // 3. Initiate connection attempt (which will use the selected port index from the UI interaction later)
+    }
+
+    fun onItemClickListener(view: View?, which: Int) {
+        // This listener handles setting 'selectedPortIndex' based on ListView selection
+        selectedPortIndex = which
+        Toast.makeText(this.applicationContext, "Selected Port $which", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Handles the action of initiating connection using the currently selected port.
+     */
+    private fun handleConnectionAttempt() {
+        val manager = getSystemService (USB_SERVICE) as? android.hardware.usb.UsbManager? ?: return
+        val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager)
+        if (availableDrivers.isEmpty()) return
+
+        val driver = availableDrivers[0] // Assume connection attempt uses the same device found initially
+
+        // Delegate Connection Setup to the Manager
+        usbManager.connectToPort(manager, driver, selectedPortIndex)
+
+        // After successful setup, start listening for data and sending initial command
+        if (selectedPortIndex >= 0) {
+            try {
+                // Start monitoring incoming serial data
+                usbManager.startListening()
+
+                // Send the mandatory identification command
+                val request = if (prefs.useDSlipProtocol) {
+                    byteArrayOf(0xB4.toByte(), 0x00, 0x81.toByte(), 0x00, 0x74)
+                } else {
+                    byteArrayOf(0x02, 0x03, 0x06, 0x37, 0xFE.toByte(), 0xC7.toByte())
+                }
+                usbManager.sendCommand(request)
+
+            } catch (e: Exception) {
+                // Handled by onError callback if communication fails immediately
+            }
+        } else {
+            findViewById<TextView>(R.id.connection_msg).text = "Please select a port first."
+        }
+    }
+
+    // --- Broadcast Receiver (Kept the same) ---
+    private val usbCdcStateReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (INTENT_ACTION_GRANT_USB == intent.action) {
+                val usbPermission = intent.getBooleanExtra(
+                    UsbManager.EXTRA_PERMISSION_GRANTED,
+                    false
+                )
+
+                if (usbPermission) {
+                    Toast.makeText(this@MainActivity, "Granted", Toast.LENGTH_LONG).show()
+                    findViewById<TextView>(R.id.connection_msg).text = getString(R.string.try_one_more_time)
+                } else {
+                    Toast.makeText(this@MainActivity, "Denied", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    // --- Initialization of the Adapter (Need to override or call setup separately since we removed onCreate's bulk logic)
+    override fun onResume() {
+        super.onResume()
+        // Re-initialize UI listeners after activity resumes
+        findViewById<ListView>(R.id.listView).onItemClickListener =
+            OnItemClickListener { _, _, i, _ ->
+                onItemClickListener(null, i) // Call the helper function
+            }
+    }
+
+}
+
+/*
+package ru.dors.androidusbcdc
+
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.graphics.Typeface
+import android.hardware.usb.UsbManager
+import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
+import android.view.View
+import android.widget.AdapterView.OnItemClickListener
+import android.widget.Button
+import android.widget.ListView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import com.hoho.android.usbserial.driver.UsbSerialPort
 import com.hoho.android.usbserial.driver.UsbSerialProber
 import com.hoho.android.usbserial.util.SerialInputOutputManager
@@ -28,7 +284,10 @@ class MainActivity : AppCompatActivity() {
     // Добавлена зависимость от класса, обеспечивающего доступ к настройкам приложения
     private lateinit var prefs: AppPreferences
 
-    var serialInputOutputManager: SerialInputOutputManager? = null
+    // Use the manager instance to handle all serial communications
+    private var usbManager: UsbConnectionManager = UsbConnectionManager(this)
+
+    //var serialInputOutputManager: SerialInputOutputManager? = null
 
     // Определяем идентификационную строку, которая используется при запросе
     // прав доступа к устройству
@@ -40,7 +299,7 @@ class MainActivity : AppCompatActivity() {
     private var adapter: CdcPortsAdapter? = null
 
     // Номер порта, который был выбран пользователем
-    private var selectedPort: Int = 0
+    private var selectedPortIndex: Int = 0
 
     // Объект, посредством которого осуществляется взаимодействие по USB CDC
     private var mPort : UsbSerialPort? = null
@@ -219,7 +478,7 @@ class MainActivity : AppCompatActivity() {
         listView.onItemClickListener =
             OnItemClickListener { _, _, i, _ ->
                 // Запоминаем выборанный номер порта
-                selectedPort = i
+                selectedPortIndex = i
                 Toast.makeText(this.applicationContext, i.toString(), Toast.LENGTH_LONG).show()
             }
 
@@ -249,7 +508,7 @@ class MainActivity : AppCompatActivity() {
                 val connection = manager.openDevice(driver.device) ?: return
 
                 // Получаем новый порт
-                mPort = driver.ports[selectedPort]
+                mPort = driver.ports[selectedPortIndex]
 
                 val message = findViewById<TextView>(R.id.connection_msg)
 
@@ -319,7 +578,7 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread {
                         val textView = findViewById<TextView>(R.id.connection_msg)
 
-                        val portString = selectedPort.toString()
+                        val portString = selectedPortIndex.toString()
                         val finalMessage = getString(
                             R.string.connection_message_template,
                             portString
@@ -346,3 +605,4 @@ class MainActivity : AppCompatActivity() {
         })
     }
 }
+*/

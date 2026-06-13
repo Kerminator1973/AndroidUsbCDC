@@ -45,10 +45,12 @@ class UsbConnectionManager(private val context: Context) {
      * @param driver The detected USB serial device driver.
      * @return A list of CdcPortData objects.
      */
-    fun getAvailablePorts(connection: UsbDeviceConnection, driver: UsbSerialDriver): List<CdcPortData> {
+    fun getAvailablePorts(manager: android.hardware.usb.UsbManager, driver: UsbSerialDriver): List<CdcPortData> {
         val portList = mutableListOf<CdcPortData>()
         for (port in driver.ports) {
             try {
+
+                val connection = manager.openDevice(driver.device) ?: continue
                 port.open(connection)
 
                 var writeEndpointAddr = 0
