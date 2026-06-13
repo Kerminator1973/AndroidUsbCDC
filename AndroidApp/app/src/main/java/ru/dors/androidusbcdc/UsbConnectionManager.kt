@@ -74,11 +74,11 @@ class UsbConnectionManager(private val context: Context) {
      * @param manager The Android UsbManager.
      * @param driver The detected USB serial device driver.
      */
-    fun connectToPort(manager: android.hardware.usb.UsbManager, driver: UsbSerialDriver, selectedPort: Int?) {
+    fun connectToPort(manager: android.hardware.usb.UsbManager, driver: UsbSerialDriver, selectedPortIndex: Int?) {
         // 1. Clean up previous connection
         disconnect()
 
-        if (selectedPort == null) {
+        if (selectedPortIndex == null) {
             listener?.onError("Error: No port selected.")
             return
         }
@@ -90,7 +90,7 @@ class UsbConnectionManager(private val context: Context) {
             }
 
             // 2. Set the active port
-            mPort = driver.ports[selectedPort]
+            mPort = driver.ports[selectedPortIndex]
             if (mPort == null) {
                 listener?.onConnectionFailure("Failed to select port index $currentSelectedPortIndex.")
                 return
@@ -107,8 +107,7 @@ class UsbConnectionManager(private val context: Context) {
             mPort?.dtr = true
             mPort?.rts = true
 
-            listener?.onConnectionSuccess("Successfully connected to port ${selectedPort}.")
-
+            listener?.onConnectionSuccess("Successfully connected to port ${selectedPortIndex}.")
 
         } catch (e: Exception) {
             listener?.onError("Failed to establish connection: " + e.message)
