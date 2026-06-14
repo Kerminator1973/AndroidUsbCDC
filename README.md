@@ -2,17 +2,23 @@
 
 Задача: подключить USB-устройство к Android-телефону по OTG. Для исследования был выбран микроконтроллер Raspberry Pi Pico.
 
-Обязательным условием решения задачи является поддержка телефоном OTG. Проверить поддержку можно используя утилиту "OTG Checker" от FaitAuJapon.com, которую можно загрузить с Google Play. На тестовом телефоне - Redmi 5A поддержка OTG присутствует. Альтернативная проверка - использование OTG-кабеля для подключения flash-диска.
+Обязательным условием решения задачи является поддержка телефоном OTG. Проверить поддержку можно используя утилиту "OTG Checker" от FaitAuJapon.com, которую можно загрузить с Google Play. Альтернативная проверка - использование OTG-кабеля для подключения USB flash-диска.
+
+В качестве тестовых телефонов, на первом этапе использовался телефон Redmi 5A (micro-USB подключение), а затем Xiaomi Mi A2 (2018 год, подключение по USB-C). Оба телефона поддерживают OTG.
+
+На некоторых телефонах, например, на Realme 9 Pro 5G технология OTG "по умолчанию" отключена. Для того, чтобы актививровать её необходимо перейти в "Настройках" в раздел "Additional Settings" и установить "OTG connection" в значение "On".
+
+## Использование библиотеки mik3y's usb-serial-for-android
 
 Для работы с внешним устройством рекомендуется использовать Java-библиотеку от [mik3y](https://github.com/mik3y/usb-serial-for-android). На эту библиотеку ссылается sandworm в статье [Работа с устройствами USB в Android](https://habr.com/ru/articles/277093/) на Habr.com.
 
-Библиотека развивается. Историю публикации версий библиотеки можно посмотреть на GitHub сайте в [списке Tag-ов](https://github.com/mik3y/usb-serial-for-android/tags). Каждый год выходит два тэга с обновленной версией библиотеки. Актуальная версия на май 2026 года - 3.10.0 от 4 декабря 2025 г.
+Библиотека развивается. Историю публикации версий библиотеки можно посмотреть на GitHub сайте в [списке Tag-ов](https://github.com/mik3y/usb-serial-for-android/tags). Каждый год публикуется два тэга с обновленной версией библиотеки. Актуальная версия на май 2026 года - 3.10.0 от 4 декабря 2025 г.
 
 Для исследования взаимодействия с USB-приборами с Android, в статье [How to communicate with Android through USB interface on nRF52820 / nRF52833 / nRF52840](https://jimmywongiot.com/2020/04/21/how-to-communicate-with-android-through-usb-interface-on-nrf52820-nrf52833-nrf52840/) рекомендуется использовать утилиту SimpleUsbTerminal от Kai Morich.
 
 На сайте [USB Serial for Android](https://github.com/mik3y/usb-serial-for-android/tree/master/usbSerialExamples/src/main/java/com/hoho/android/usbserial) есть пример кода на Java, который демонстрирует использование библиотеки mik3y.
 
-Следует заменить, что в примере приложения sbSerialExamples есть файл `\usbSerialExamples\src\main\res\xml\device_filter.xml`, в котором содержится список поддерживаемых USB-мостов:
+Следует заметить, что в примере приложения sbSerialExamples есть файл `\usbSerialExamples\src\main\res\xml\device_filter.xml`, в котором содержится список поддерживаемых USB-мостов (микроконтроллеров USB Bridges):
 
 ``` xml
 <?xml version="1.0" encoding="utf-8"?>
