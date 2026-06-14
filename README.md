@@ -105,13 +105,15 @@ dependencies {
 
 Ключевой вопрос: как отлаживать код работы с USB-устройством, если единственный порт занят кабелем, подключающим телефон к Android Studio на ПК?
 
-Tools -> Device Manager выбрать закладку "Phisical" и настроить отладку по Wi-Fi. Следует заметить, что отладка работает только на устройствах с установленным Android 11+.
+Tools -> Device Manager выбрать закладку "Phisical" и настроить отладку по Wi-Fi. Следует заметить, что отладка работает только на устройствах с установленным Android 11+. 
+
+>Смартфон Realme 9 Pro 5G на котором установлен Android 14 для этой задачи подходит.
 
 ## Разработка кода
 
-Для подключения к микроконтроллеру использовался следующий код, который был взят из примера mik3y и переработан с Java на Kotlin:
+Для подключения к микроконтроллеру использовался следующий код, который был взят из примера mik3y и портирован с Java на Kotlin:
 
-``` kotlin
+```java
 import android.content.Context
 import android.hardware.usb.UsbManager
 import com.hoho.android.usbserial.driver.UsbSerialProber
@@ -162,7 +164,7 @@ class MainActivity : ComponentActivity() {
 <usb-device vendor-id="9114" product-id="33012" /> <!-- 0x239a / 0x80f4 Adafruit Pico CircuitPython -->
 ```
 
-Указанные pid/vid были получены при подключении Pico к персональному компьютеру, работающему под Ubunte Mate 22.04:
+Указанные pid/vid были получены при подключении Pico к персональному компьютеру, работающему под Ubuntu Mate 22.04:
 
 ``` console
 developer@atmcheck:~$ lsusb
@@ -192,8 +194,6 @@ usb_cdc.enable(console=True, data=True)
 ID соединён с GROUND и по этому признаку, телефон понимает, что он должен работать в режиме клиента, а не Host-а.
 
 Работоспособность OTG-кабеля можно проверить подключив к телефону USB-флешку.
-
-Следует отметить, что далеко не все мобильные телефоны поддерживают OTG-кабель. Так, например, мне не удалось подключить микроконтроллер Raspberry Pi Pico к **Realme 9 Pro 5G** с Android 14.
 
 ### Вспомогательные функции
 
@@ -268,16 +268,16 @@ if (port.serial != null) {
 
 ### Скорость обмена данными
 
-При подключении приборов BVS, критически важным является настройка скорости обмена данными, котороая должна составлять 921600:
+При подключении приборов BVS, критически важным является настройка скорости обмена данными, которая должна составлять `921600`:
 
-``` kt
+```java
 port.open(connection)
 port.setParameters(921600, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
 ```
 
 ### Использование DTR и RTS
 
-``` kt
+```java
 port.setParameters(115200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
 
 // Сигнал готовности терминала: Pico и Android начинают обмен данными
@@ -291,7 +291,7 @@ port.rts = true
 
 В моём приложении, полученные данные от микроконтроллера добавляются к строке с текстом (textView):
 
-``` kt
+```java
 val serialInputOutputListener: SerialInputOutputManager.Listener =
     object : SerialInputOutputManager.Listener {
         override fun onRunError(ignored: Exception) {}
@@ -306,7 +306,7 @@ val serialInputOutputListener: SerialInputOutputManager.Listener =
 
 Запуск потока осуществляется следующим образом:
 
-``` kt
+```java
 serialInputOutputManager =
     SerialInputOutputManager(port, serialInputOutputListener)
 serialInputOutputManager!!.readTimeout = 0
@@ -321,7 +321,7 @@ rx.submit(serialInputOutputManager)
 
 Отправить команду контроллеру можно следующим образом:
 
-``` kt
+```java
 try {
     val request = ubyteArrayOf(0x02U, 0x03U, 0x06U, 0x37U, 0xFEU, 0xC7U).toByteArray()
     port.write(request, 0)
@@ -331,19 +331,19 @@ try {
 
 Следует заметить, что для разных приборов BVS используются разные протоколы взаимодействия. Для проверки работоспособности обмена данными, кажется разумным использовать команду Identification, которая возвращает уникальный идентификационный номер прибора. Для протокола CCNet тестовая команда выглядит так:
 
-``` kt
+```java
 val request = ubyteArrayOf(0x02U, 0x03U, 0x06U, 0x37U, 0xFEU, 0xC7U).toByteArray()
 ```
 
 Для протокола DSlip тестовая команда выглядит так:
 
-``` kt
+```java
 val request = ubyteArrayOf(0xB4U, 0x00U, 0x81U, 0x00U, 0x74U).toByteArray()
 ```
 
 Если мы хотим выполнять команду систематически, например, для получения состояния какого-то объекта, мы можем использовать планировщик:
 
-``` kt
+```java
 var co100Ms = Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate({
     try {
         val request = ubyteArrayOf(0x02U, 0x03U, 0x06U, 0x37U, 0xFEU, 0xC7U).toByteArray()
@@ -372,13 +372,13 @@ public synchronized void stop() {
 
 На основании экспериментальной проверки, можно говорить о том, что если мы создадим объект mPort - сделав его членом экземпляра класса MainActivity:
 
-```kt
+```java
 private var mPort : UsbSerialPort? = null
 ```
 
 а при создании новой задачи для работы с последовательным портом вызовем close() для уже существующего экземпляра:
 
-```kt
+```java
 // Вызов метод close() должен завершить поток, который слушает последовательный порт
 // в данный момент времени
 mPort?.close()
@@ -387,15 +387,15 @@ mPort?.close()
 mPort = driver.ports[selectedPort]
 ```
 
-то ранее созданная задача завершится и мы мы не попадём в ситуацию, когда происходит дублирование задач работы с портами.
+то ранее созданная задача завершится и мы не попадём в ситуацию, когда происходит дублирование задач работы с портами.
 
 ### Особенность работы port.close()
 
 В случае, если мы закрываем порт, то также закрывается и общий connection. Эта особенность может приводить к тому, что при получении данных о последовательном порте, на многопортовых устройствах (Raspberry Pi Pico содержит два порта: REPL и CDC), информация о втором порте будет недоступна.
 
-Пример кода закрытия всех портов и connection:
+Пример кода закрытия всех портов и соединений:
 
-``` kt
+```java
 if (driver.ports.size > 0) {
     driver.ports[0].close()
 }
@@ -407,9 +407,9 @@ if (driver.ports.size > 0) {
 
 Проблема может возникнуть при следующих обстоятельствах: пользователь подключил USB-устройсво, получил сообщение с просьбой предоставить право работы с подключенным USB-устройством, но испугался и нажал "Отмена". Поскольку право не было получено, работать с прибором можно будет только в том случае, если пользователь физически отключит USB-устройство и подключит его ещё раз.
 
-Однако, мы можем явным образом запросить у пользователя разрешение на доступ к USB-устройству ещё раз. Сделать это можно используя системную функцию **requestPermission()**. Например, вызов openDevice() закончивается неудачей - наиболее вероятно, что у нас нет необходимых прав. В этом случаем мы вызываем метод requestPermission(), реализованный в wrapper-е библиотеки mik8y, передаём ссылку на интересующее нас устройство и Intent, который приведёт к нашему Activity:
+Однако, мы можем явным образом запросить у пользователя разрешение на доступ к USB-устройству ещё раз. Сделать это можно используя системную функцию `requestPermission()`. Например, вызов `openDevice()` закончивается неудачей - наиболее вероятно, что у нас нет необходимых прав. В этом случаем мы вызываем метод `requestPermission()`, реализованный в wrapper-е библиотеки mik8y, передаём ссылку на интересующее нас устройство и Intent, который приведёт к нашему Activity:
 
-``` kt
+```java
 val connection = manager.openDevice(driver.device)
 if (connection == null) {
 
@@ -430,13 +430,13 @@ if (connection == null) {
 
 Идентификатор INTENT_ACTION_GRANT_USB - это просто идентификационная строка, определённая в нашем коде:
 
-``` kt
+```java
 private val INTENT_ACTION_GRANT_USB = "UsbCdcApp.GRANT_USB"
 ```
 
-Чтобы получить сообщение о получении права, нам необходимо настроить подписчик - BroadcastReceiver. Сделать это можно в методах onStart() и onStop():
+Чтобы получить сообщение о получении права, нам необходимо настроить подписчик - BroadcastReceiver. Сделать это можно в методах `onStart()` и `onStop()`:
 
-``` kt
+```java
 class MainActivity : AppCompatActivity() {
     ...
     override fun onStart() {
@@ -452,7 +452,7 @@ class MainActivity : AppCompatActivity() {
 
 При получении сообщения `INTENT_ACTION_GRANT_USB` будем вызван зарегистрированный метод:
 
-``` kt
+```java
 private val usbCdcStateReceiver: BroadcastReceiver = object : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (INTENT_ACTION_GRANT_USB == intent.action) {
@@ -479,7 +479,7 @@ private val usbCdcStateReceiver: BroadcastReceiver = object : BroadcastReceiver(
 
 Выполнить подписку на события можно следующим образом:
 
-``` kt
+```java
 broadcastReceiver = object : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
@@ -509,7 +509,7 @@ this.registerReceiver(broadcastReceiver, intentFilter)
 
 При завершении приложения (Activity) кажется разумным отписаться от зарегистрированных подписок:
 
-``` kt
+```java
 override fun onDestroy() {
     serialInputOutputManager!!.stop()
     //unregisterReceiver(broadcastReceiver)
