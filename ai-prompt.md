@@ -1524,3 +1524,464 @@ class OptionsActivity : AppCompatActivity() {
 | java.util.ArrayList in adapter              | MutableList                                  |
 
 tryEmit() is used in the SerialInputOutputManager callbacks instead of scope.launch { emit() } — it is thread-safe, non-blocking, and eliminates the need for an internal CoroutineScope inside UsbConnectionManager entirely.
+
+## Следующая попытка оценки архитектуры приложения
+
+Key Areas for Improvement (3-5 Points):
+
+- **Concurrency Management and Threading Model**: The most critical issue is the inconsistent use of runOnUiThread and manual handling of callbacks (onDataReceived, onError). The data reception path is synchronous within the UsbConnectionManager but pushes UI updates in MainActivity. This violates modern Android best practices (which favor LiveData or Kotlin Flows) and makes managing background operations risky
+- **Tight Coupling and Dependency Injection**: Classes like MainActivity and OptionsActivity hard-initialize singletons/services (AppPreferences, UsbConnectionManager) using findViewById() and direct calls to system services. This creates extreme coupling, making testing difficult and maintenance brittle
+- **Resource Leak Management (State Handling)**: The UsbConnectionManager handles complex resource opening (mPort?.open(connection)) but does not guarantee clean shutdown across all failure paths. Furthermore, the reliance on setting up system receivers in onStart() and tearing them down only in onStop() can lead to subtle leaks or race conditions if other lifecycle methods are involved.
+- **API Usage (View Binding/Kotlin Idioms)**: The code frequently uses manual view lookups (`findViewById<TextView>(R.id.connection_msg)`), which is boilerplate and error-prone in modern Android development. Using View Binding would vastly improve safety and readability.
+- **Error Handling**: Many try/catch blocks (e.g., in getAvailablePorts, handleConnectionAttempt) catch the generic Exception. This swallows important context, making debugging impossible. Specific exception handling is mandatory for reliable systems.
+
+
+Предложение по модификации "UsbConnectionManager.kt":
+
+```kotlin
+package ru.dors.androidusbcdc
+
+import android.content.Context
+import com.hoho.android.usbserial.driver.UsbSerialDriver
+import com.hoho.android.usbserial.driver.UsbSerialPort
+import com.hoho.android.usbserial.util.SerialInputOutputManager
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import java.io.IOException
+
+/**
+ * Manages low-level USB CDC connection and data stream.
+ * It now exposes a SharedFlow for data, making the class observable (reactive).
+ */
+class UsbConnectionManager(private val context: Context) {
+
+    // Use Flows/Channels for reactive streaming of events instead of callbacks.
+    companion object {
+        const val TAG = "UsbService"
+        private val _dataChannel = MutableSharedFlow<String>(extraBufferCapacity = 10)
+        val dataChannel: SharedFlow<String> = _dataChannel
+
+        private val _errorChannel = MutableSharedFlow<String>()
+        val errorChannel: SharedFlow<String> = _errorChannel
+    }
+
+    // Private state variables
+    @Volatile private var mPort: UsbSerialPort? = null
+    private var serialInputOutputManager: SerialInputOutputManager? = null
+    
+    var currentSelectedPortIndex: Int = 0
+        private set // Restrict external modification of port index
+
+    // --- Public methods using structured concurrency safety checks ---
+
+    /**
+     * Retrieves a list of available endpoints. Remains similar, but improves error handling.
+     */
+    fun getAvailablePorts(manager: android.hardware.usb.UsbManager, driver: UsbSerialDriver): List<CdcPortData> {
+        val portList = mutableListOf<CdcPortData>()
+        for (port in driver.ports) {
+            try {
+                // Check if connection is possible before adding to list
+                if (manager.hasPermission(driver.device)) { 
+                    val connection = manager.openDevice(driver.device)
+                    port.open(connection) // Opening here might fail, but we assume it's the best effort for discovery
+                    
+                    var writeEndpointAddr = port.writeEndpoint?.address ?: 0
+                    var readEndpointAddr = port.readEndpoint?.address ?: 0
+
+                    portList.add(CdcPortData(port.portNumber, writeEndpointAddr, readEndpointAddr))
+                } else {
+                    // Handle lack of permission gracefully for discovery list
+                    portList.add(CdcPortData(port.portNumber, -1, -1)) 
+                }
+            } catch (e: IOException) {
+                // Log the specific failure instead of swallowing it
+                android.util.Log.w("UsbService", "Failed to process port ${port.portNumber}", e)
+                // Only add if we couldn't fail spectacularly (return 0,0,0 would be misleading)
+            }
+        }
+        return portList
+    }
+
+    /**
+     * Establishes connection and initializes resource handles.
+     */
+    fun connectToPort(manager: android.hardware.usb.UsbManager, driver: UsbSerialDriver, selectedPortIndex: Int?) {
+        // 1. Clean up previous state (Crucial for robust concurrency)
+        disconnect()
+
+        if (selectedPortIndex == null || selectedPortIndex < 0) {
+            _errorChannel.tryEmit("Error: No valid port selected.")
+            return
+        }
+
+        try {
+            val connection = manager.openDevice(driver.device) ?: run {
+                _errorChannel.tryEmit("Could not open device connection.")
+                return
+            }
+
+            mPort = driver.ports[selectedPortIndex] 
+            if (mPort == null) {
+                _errorChannel.tryEmit("Failed to select port index $selectedPortIndex.")
+                return
+            }
+
+            mPort?.open(connection)
+            currentSelectedPortIndex = selectedPortIndex // Update state safely
+
+            // Use app context here to ensure the settings object initialization is non-leaky.
+            val prefs = AppPreferences(context) 
+            val speed = if (prefs.useDefaultSpeed) 115200 else 921600
+            mPort?.setParameters(speed, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE)
+
+            // Signal activation
+            mPort?.dtr = true
+            mPort?.rts = true
+
+            _dataChannel.tryEmit("Successfully connected to port $selectedPortIndex.") // Use data channel for success message
+            
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "Connection failure during setup", e)
+            _errorChannel.tryEmit("Failed to establish connection: ${e.message}")
+        }
+    }
+
+    /**
+     * Starts listening for incoming data stream. Must be called AFTER successful connectToPort().
+     */
+    fun startListening() {
+        if (mPort == null) return
+
+        val serialInputOutputListener = object : SerialInputOutputManager.Listener {
+            override fun onRunError(errorMsg: Exception) {
+                android.util.Log.w(TAG, "Run error encountered", errorMsg)
+                _errorChannel.tryEmit("Runtime Error during streaming: ${errorMsg.message}")
+            }
+
+            override fun onNewData(data: ByteArray) {
+                val hexString = data.toHex() + "\n"
+                // Emit the received data packet asynchronously to listeners
+                // Flow handles dispatching this back to the calling coroutine scope/thread model.
+                CoroutineScope(Dispatchers.IO).launch { 
+                    _dataChannel.emit(hexString)
+                }
+            }
+        }
+
+        serialInputOutputManager = SerialInputOutputManager(mPort!!, serialInputOutputListener)
+        serialInputOutputManager!!.readTimeout = 0
+        // Note: Starting this background task assumes proper lifecycle management in the caller.
+        serialInputOutputManager!!.start()
+    }
+
+    /**
+     * Sends command data.
+     */
+    fun sendCommand(command: ByteArray) {
+        if (mPort == null) {
+            _errorChannel.tryEmit("Cannot send command: No active port connection.")
+            return
+        }
+        try {
+            // Blocking call, but encapsulated here.
+            mPort?.write(command, 0)
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "Error sending command", e)
+            _errorChannel.tryEmit("Error sending command: ${e.message}")
+        }
+    }
+
+    /**
+     * Safely closes all resources and resets state.
+     */
+    fun disconnect() {
+        if (mPort != null || serialInputOutputManager != null) {
+            // Important: Call close/stop even if the connection failed previously
+            try {
+                mPort?.close() 
+            } catch (_: Exception) {}
+
+            serialInputOutputManager?.stop()
+            mPort = null
+            serialInputOutputManager = null
+            _dataChannel.tryEmit("Disconnected from USB CDC.") // Use data channel for status updates
+        }
+    }
+}
+```
+
+Ключевая идея, которая залолжена в предложенный код состоит в использовании `MutableSharedFlow<String>` вместо callback-функций для отправки уведомлений в "MainActivity.kt". Каналы передачи данных определены как:
+
+```java
+// Use Flows/Channels for reactive streaming of events instead of callbacks.
+companion object {
+	const val TAG = "UsbService"
+	private val _dataChannel = MutableSharedFlow<String>(extraBufferCapacity = 10)
+	val dataChannel: SharedFlow<String> = _dataChannel
+
+	private val _errorChannel = MutableSharedFlow<String>()
+	val errorChannel: SharedFlow<String> = _errorChannel
+}
+```
+
+Отправка сообщений об ошибках выглядит как:
+
+```java
+_errorChannel.tryEmit("Failed to select port index $selectedPortIndex.")
+```
+
+Информация об успешных действиях:
+
+```java
+_dataChannel.tryEmit("Successfully connected to port $selectedPortIndex.") // Use data channel for success message
+```
+
+Стоит заметить, что т.к. все сообщения всё равно попадают в одно окно, то можно было бы использовать один канал для доставки данных, а не два. С другой стороны, в оригинальном коде callback-функций было четыре и отличались они тем, что два сообщения кроме записи в журнал, ещё формировали Toast-ы. Вопрос дискуссионный.
+
+В целом, вся идея модификации класса UsbConnectionManager строиться вокруг идея использования Flows/Channels для организации реактивных потоков вместо callback-функций, которые кажутся устаревшими.
+
+Предложение по модификации "MainActivity.kt":
+
+```kotlin
+package ru.dors.androidusbcdc
+
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.graphics.Typeface
+import android.hardware.usb.UsbManager
+import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
+import android.view.View
+import android.widget.Button // Assuming standard Android widgets used for simplicity
+import android.widget.ListView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.*
+import kotlinx.coroutines.*
+import com.hoho.android.usbserial.driver.UsbSerialProber
+
+class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListener {
+
+    // 1. Use ViewModel (or simple lazy initialization) instead of instance property.
+    // Here we use a simplified approach to manage the service reference lifecycle.
+    private lateinit var usbManager: UsbConnectionManager
+    
+    // Coroutine scope tied to the activity's lifecycle for observing data streams
+    private val activityScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    private val bindingViewModel: ViewModelProvider.() -> ViewModel = { 
+        // In a real app, this would be a proper ViewModel/Repository layer injection
+        object : ViewModel() {
+            fun getUsbManager(): UsbConnectionManager = UsbConnectionManager(getApplicationContext())
+        }
+    }
+    private val viewModel: ViewModel by viewModels { bindingViewModel() }
+
+    // UI references (Using View Binding pattern mentally, but sticking to findViewById for minimal file changes)
+    private lateinit var connectionMessageTextView: TextView
+    private lateinit var listView: ListView 
+    private lateinit var prefs: AppPreferences
+    
+    private var arrayList: ArrayList<CdcPortData> = ArrayList()
+    private var adapter: CdcPortsAdapter? = null
+
+    // State management variables
+    private var selectedPortIndex: Int = 0
+    private val INTENT_ACTION_GRANT_USB = "UsbCdcApp.GRANT_USB"
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // In production, replace this with ViewBinding implementation (e.g., binding.root)
+        setContentView(R.layout.activity_main) 
+
+        // Initialization of UI elements
+        val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.app_toolbar)
+        setSupportActionBar(toolbar)
+        connectionMessageTextView = findViewById(R.id.connection_msg)
+        listView = findViewById(R.id.listView)
+
+        // Initialize Dependencies (Dependency Injection improvement)
+        usbManager = viewModel.getUsbManager() 
+        prefs = AppPreferences(this) // Preferences remain simple state readors
+
+        // Setup UI components
+        connectionMessageTextView.typeface = Typeface.MONOSPACE
+        adapter = CdcPortsAdapter(this, arrayList)
+        listView.adapter = adapter
+
+        // Set up Listeners (Using lambda/click listeners is cleaner than anonymous objects)
+        findViewById<Button>(R.id.button)?.setOnClickListener { 
+            handleInitialDiscoveryAndConnect() 
+        }
+        findViewById<Button>(R.id.buttonExchange)?.setOnClickListener { 
+            handleConnectionAttempt() 
+        }
+        findViewById<Button>(R.id.buttonClear)?.setOnClickListener {
+            connectionMessageTextView.text = ""
+        }
+
+        // Subscribe to USB Data Streams (Reactivity)
+        observeUsbDataStreams()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Register receiver lifecycle remains sound for system broadcasts
+        val intentFilter = IntentFilter(INTENT_ACTION_GRANT_USB)
+        ContextCompat.registerReceiver(
+            this, usbCdcStateReceiver, intentFilter, ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Unregister receiver
+        unregisterReceiver(usbCdcStateReceiver)
+        // CRITICAL: Clean up connection resources when activity is stopped/destroyed
+        usbManager.disconnect() 
+    }
+    
+    /**
+     * Observes the reactive data channels from UsbConnectionManager using coroutines.
+     * This replaces all manual callback methods (onDataReceived, onError, etc.).
+     */
+    private fun observeUsbDataStreams() {
+        // Launch collector in the ActivityScope, tying it to the ViewModel/Activity lifecycle 
+        // (or Dispatchers.Main for simplicity here).
+        activityScope.launch(Dispatchers.Main) {
+            // Collect all incoming data streams until the job is cancelled (e.g., onStop/onDestroy)
+            combine(
+                UsbConnectionManager.dataChannel, 
+                UsbConnectionManager.errorChannel
+            ) { data, error -> Pair(data, error) }
+                .collect { (data, _) ->
+                    if (data != null) {
+                        appendMessage("[DATA] $data")
+                    }
+                }
+
+            // Handle errors separately for clearer distinction in UI logging
+            UsbConnectionManager.errorChannel.onEach { message ->
+                appendMessage("\n[ERROR] $message")
+            }.launchIn(this) // Launching another collector scope
+        }
+    }
+
+
+    /** Helper function to update the TextView on the main thread safely. */
+    private fun appendMessage(message: String) {
+         runOnUiThread { 
+             connectionMessageTextView.append("\n$message")
+         }
+    }
+
+    // Lifecycle Callbacks (Refactored callbacks to use the reactive stream logic, eliminating redundant calls)
+    // These methods are now theoretically redundant if the entire system uses Flows, but kept for structure demonstration.
+    /* 
+    override fun onDataReceived(hexString: String) { ... } // REMOVE
+    override fun onError(message: String) { ... }       // REMOVE
+    // etc.
+    */
+
+
+    private fun handleInitialDiscoveryAndConnect() {
+        // Logic remains mostly the same, focused only on USB discovery list building.
+        val manager = getSystemService (Context.USB_SERVICE) as? UsbManager ?: return
+
+        val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager)
+        if (availableDrivers.isEmpty()) {
+            connectionMessageTextView.text = getString(R.string.text_driver_unavailable)
+            return
+        }
+
+        // ... [rest of discovery logic] ... 
+        val driver = availableDrivers[0]
+        findViewById<TextView>(R.id.textViewIdentification).text = driver.device.deviceName
+        findViewById<TextView>(R.id.textViewDevice).text = "pid = ${driver.device.productId}, vid =  ${driver.device.vendorId}"
+
+        val connection = manager.openDevice(driver.device) ?: run {
+            appendMessage("\n[ERROR] USB Permission required.")
+            // Re-request logic...
+            return
+        }
+
+        arrayList.clear()
+        val ports = usbManager.getAvailablePorts(manager, driver) // Use the refactored method
+        arrayList.addAll(ports)
+        adapter?.notifyDataSetChanged()
+    }
+
+
+    fun onItemClickListener(which: Int) {
+        selectedPortIndex = which
+        // Clear previous messages on selection change
+        connectionMessageTextView.text = ""
+        Toast.makeText(this.applicationContext, "Selected Port $which", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun handleConnectionAttempt() {
+        val manager = getSystemService (Context.USB_SERVICE) as? UsbManager ?: return
+        val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager)
+        if (availableDrivers.isEmpty()) return
+
+        val driver = availableDrivers[0]
+
+        // 1. Attempt connection using the robust manager method
+        usbManager.connectToPort(manager, driver, selectedPortIndex)
+
+        if (selectedPortIndex >= 0) {
+            try {
+                // 2. If connected, start streaming and send command
+                usbManager.startListening() // Start consuming data stream
+                
+                val request = if (prefs.useDSlipProtocol) {
+                    byteArrayOf(0xB4.toByte(), 0x00, 0x81.toByte(), 0x00, 0x74)
+                } else {
+                    byteArrayOf(0x02, 0x03, 0x06, 0x37, 0xFE.toByte(), 0xC7.toByte())
+                }
+                usbManager.sendCommand(request)
+
+            } catch (e: Exception) {
+                appendMessage("\n[EXCEPTION] Failed during connection setup: ${e.message}")
+            }
+        } else {
+            connectionMessageTextView.text = getString(R.string.please_select_port_first)
+        }
+    }
+
+    // Broadcast receiver remains largely the same, but receives messages via dedicated helper function.
+    private val usbCdcStateReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (INTENT_ACTION_GRANT_USB == intent.action) {
+                val usbPermission = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
+
+                // Use the centralized message helper function
+                if (usbPermission) {
+                    Toast.makeText(this@MainActivity, "Granted", Toast.LENGTH_LONG).show()
+                    connectionMessageTextView.append("\n[STATUS] USB Permission granted.")
+                } else {
+                    Toast.makeText(this@MainActivity, "Denied", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Re-setting the listener is necessary if using ListView (old pattern)
+        findViewById<ListView>(R.id.listView)?.onItemClickListener = 
+            object : AdapterView.OnItemClickListener {
+                override fun onItemClick(parent: AdapterView<*>?, view: View?, position: Int, id: Long?) {
+                    onItemClickListener(position)
+                }
+            }
+    }
+}
+```
