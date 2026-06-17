@@ -1985,3 +1985,59 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
     }
 }
 ```
+
+Также предложено переписать "CdcPortsAdapter.kt" с целью замены ListView на androidx.recyclerview.viewholder.RecyclerView, что потребует также внесения изменений в файле "activity_main.xml". Предложение по модификации:
+
+```kotlin
+package ru.dors.androidusbcdc
+
+import android.content.Context
+// We simulate migration to RecyclerView.Adapter pattern here.
+import androidx.recyclerview.widget.RecyclerView 
+
+/**
+ * ARCHITECTURAL NOTE: This adapter should be refactored to extend RecyclerView.Adapter<*> 
+ * and utilize View Binding instead of BaseAdapter, which is deprecated.
+ */
+class CdcPortsAdapter(context: Context) : 
+    RecyclerView.Adapter<CdcPortsAdapter.PortViewHolder>() { // Assume this structure
+
+    private var portList: List<CdcPortData> = emptyList()
+
+    fun setPortList(list: List<CdcPortData>) {
+        this.portList = list
+        // Crucial step for performance: notify data change correctly
+        notifyDataSetChanged() 
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PortViewHolder {
+        // Use View Binding here instead of findViewById(R.id.*)
+        val binding = /* inflate with ViewBinding */ parent.context.createView(/* layout resource */)
+        return PortViewHolder(binding)
+    }
+
+    override fun getItemCount(): Int = portList.size
+
+    override fun onBindViewHolder(holder: PortViewHolder, position: Int) {
+        val portData = portList[position]
+        // Binding data via the ViewHolder wrapper class (improving separation)
+        holder.bind(portData) 
+    }
+
+
+    /** Inner class representing a view holder */
+    inner class PortViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        // Use generated binding accessors here in production code.
+        val idNumber: TextView = view.findViewById(R.id.idNumber) 
+        val writeEndpoint: TextView = view.findViewById(R.id.writeEndpoint)
+        val readEndpoint: TextView = view.findViewById(R.id.readEndpoint)
+
+        fun bind(data: CdcPortData) {
+            // Clean, data-focused binding logic
+            idNumber.text = data.id.toString()
+            writeEndpoint.text = "Write Endpoint: ${data.writeEndpoint}"
+            readEndpoint.text = "Read Endpoint: ${data.readEndpoint}"
+        }
+    }
+}
+```
