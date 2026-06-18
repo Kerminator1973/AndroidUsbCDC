@@ -2024,7 +2024,6 @@ class CdcPortsAdapter(context: Context) :
         holder.bind(portData) 
     }
 
-
     /** Inner class representing a view holder */
     inner class PortViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         // Use generated binding accessors here in production code.

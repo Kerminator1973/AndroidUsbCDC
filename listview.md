@@ -271,4 +271,7 @@ viewHolder.apply {
 
 ### Замена решения на RecyclerView.Adapter. RecyclerView
 
-Совет на будущее: если проект позволяет, рассмотрите замену ListView + BaseAdapter на RecyclerView + RecyclerView.Adapter. RecyclerView требует использования ViewHolder на уровне API, что исключает подобные ошибки по умолчанию, а также обеспечивает лучшую производительность и гибкость анимаций.
+Хотя ListView и классический ViewHolder всё ещё работают, в современной разработке их заменяют:
+
+- RecyclerView + RecyclerView.Adapter. Встроенное использование паттерна ViewHolder через RecyclerView.ViewHolder
+- Data Binding / View Binding. Автоматическое создание ссылок на View, что частично снимает необходимость вручную писать ViewHolder , что исключает подобные ошибки по умолчанию, а также обеспечивает лучшую производительность и гибкость анимаций.
