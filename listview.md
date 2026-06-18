@@ -263,9 +263,26 @@ viewHolder.apply {
 }
 ```
 
-### Замена решения на RecyclerView.Adapter. RecyclerView
+### Замена решения на RecyclerView.Adapter + RecyclerView
 
 Хотя ListView и классический ViewHolder всё ещё работают, в современной разработке их заменяют:
 
 - RecyclerView + RecyclerView.Adapter. Встроенное использование паттерна ViewHolder через RecyclerView.ViewHolder
 - Data Binding / View Binding. Автоматическое создание ссылок на View, что частично снимает необходимость вручную писать ViewHolder , что исключает подобные ошибки по умолчанию, а также обеспечивает лучшую производительность и гибкость анимаций.
+
+Чтобы перейти на использование RecyclerView, необходимо добавить зависимость для этого компонента в файле "build.gradle":
+
+```
+dependencies {
+    implementation 'androidx.recyclerview:recyclerview:1.4.0'
+```
+
+Заметим, что с этой задачей прекрасно справляется Android Studio.
+
+В разметке "activity_main.xml" необходимо заменить ListView на RecyclingView, но указывать нужно полное имя компонента, а не RecyclerView, т.к. Android Studio не поймёт сокращённый вариант:
+
+```xml
+<androidx.recyclerview.widget.RecyclerView ... />
+```
+
+Переписать придётся как MainActivity.kt, так и CdcPortsAdapter.kt.
