@@ -279,10 +279,12 @@ dependencies {
 
 Заметим, что с этой задачей прекрасно справляется Android Studio.
 
-В разметке "activity_main.xml" необходимо заменить ListView на RecyclingView, но указывать нужно полное имя компонента, а не RecyclerView, т.к. Android Studio не поймёт сокращённый вариант:
+В разметке "activity_main.xml" необходимо заменить ListView на RecyclerView, но указывать нужно полное имя компонента, а не RecyclerView, т.к. Android Studio не поймёт сокращённый вариант:
 
 ```xml
 <androidx.recyclerview.widget.RecyclerView ... />
 ```
 
 Переписать придётся как MainActivity.kt, так и CdcPortsAdapter.kt.
+
+>К сожалению, быстро переписать не удалось - в списке RecyclerView отображался только первый интерфейс (REPL), а информация о втором (data) была пустой. Необходимо внимательно разбираться с парадигмой использования RecyclerView.
