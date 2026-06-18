@@ -48,4 +48,23 @@ class CdcPortsAdapter(private val context: Context, private val arrayList: java.
 
         return view
     }
+
+/*  TODO: попробовать оптимизированный код
+    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+        val view = convertView ?: LayoutInflater.from(context)
+            .inflate(R.layout.row, parent, false)
+            .also { it.tag = ViewHolder(it) }
+
+        val viewHolder = view.tag as ViewHolder
+        val portData = arrayList[position]
+
+        viewHolder.apply {
+            idNumber.text = portData.id.toString()
+            writeEndpoint.text = "Write Endpoint: ${portData.writeEndpoint}"
+            readEndpoint.text = "Read Endpoint: ${portData.readEndpoint}"
+        }
+
+        return view
+    }
+*/ 
 }

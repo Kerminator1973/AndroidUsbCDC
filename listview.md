@@ -1,10 +1,10 @@
-# Добавить ListView в Kotlin/Android
+# Добавить ListView в Kotlin/Android. Шаблон проектирования ViewHolder
 
 Стартовая статья [How to write a custom adapter for my list view on Android using Kotlin?](https://www.tutorialspoint.com/how-to-write-a-custom-adapter-for-my-list-view-on-android-using-kotlin) от Azhar.
 
 Последовательность действий:
 
-- Разрабатываем модель, т.к. класс, поля которого будут отбражатся в отдельном пункте ListView. В моём приложении этот класс называется CdcPortData
+- Разработать модель, т.к. класс, поля которого будут отбражатся в отдельном пункте ListView. В моём приложении этот класс называется CdcPortData
 - Разработать разметку отдельного элемента ListView. В моем приложении файл находится в res/layout и называется "row.xml"
 - Добавить в разметку Activity (файл "activity_main.xml") элемент ListView
 - Разработать адаптер, который инициализируется списком ArrayList, в котором будут хранится экземпляры класса-модели (CdcPortData). Задача адаптера - связать модель и представление, которое берётся из файла "row.xml"
@@ -14,7 +14,7 @@
 
 ## Реализация модели
 
-Реализация модели может выглядесь следующим образом:
+Реализация модели может выглядеть следующим образом:
 
 ``` kt
 class CdcPortData(private var id: Int, private var writeEndpoint: Int,
@@ -204,3 +204,71 @@ class MainActivity : AppCompatActivity() {
 Мы создаём экземпляр класса-адаптера, инициализируея его контейнером, хранящим экземпляры класса CdcPortData. Важно заметить, что эта инициализация предполагает, что мы не сможет затем удалить адаптер из создать новый - это приведёт к потере связи и развале логики работы Activity. Вместо этого, мы должны использовать единожды созданный контейнер.
 
 Далее, нам достаточно лишь проинициализировать ссылку на адаптер в экземпляре класса ListView.
+
+## Рефакторинг кода, использование шаблона проектирования
+
+В рамках рефакторинга приложения был был применён шаблон проектирования **ViewHolder**, который позволяет повторно использовать View, повышая эффективность работы ListView — в частности, для обеспечения плавной прокрутки списка и снижения нагрузки на систему.
+
+### Основные проблемы без ViewHolder
+
+При работе с ListView система вызывает метод **getView**() адаптера для каждого видимого элемента списка — и многократно при прокрутке. Без использования ViewHolder возникают две ключевые проблемы:
+
+- Частый вызов findViewById(). На каждой итерации метод ищет в иерархии макета нужные дочерние View (текстовые поля, изображения и т. д.). Поиск по ID — относительно дорогая операция: система рекурсивно обходит дерево элементов
+- Избыточное создание объектов. Если не использовать переиспользуемые View (convertView), система будет заново _inflate layout_ для каждого элемента — расходуя память и процессорное время
+
+В результате:
+
+- прокрутка становится "дёрганой" (laggy)
+- растёт нагрузка на GC (сборщик мусора) из‑за множества короткоживущих объектов
+- на слабых устройствах приложение может аварийно завершиться (OutOfMemoryException)
+
+ViewHolder — это простой класс‑контейнер, который:
+
+- один раз находит все дочерние View внутри элемента списка
+- сохраняет ссылки на них как поля экземпляра
+- прикрепляется к View через setTag()
+
+На последующих вызовах getView() мы используем уже готовый ViewHolder через getTag() — и сразу работаем с сохранёнными ссылками, минуя findViewById().
+
+В реализации адаптера CdcPortsAdapter мы определяем внутренний класс, который хранит ссылки на view, заменяя вызовы функции findViewById() при каждом вызове getview():
+
+```java
+private class ViewHolder(view: View) {
+    val idNumber: TextView = view.findViewById(R.id.idNumber)
+    val writeEndpoint: TextView = view.findViewById(R.id.writeEndpoint)
+    val readEndpoint: TextView = view.findViewById(R.id.readEndpoint)
+}
+```
+
+Этот класс отражает набор полей, определённых в описании элемента списка из "row.xml".
+
+В реализации метода getView(), при первом запуске сохраняем информацию о View во ViewHolder. При повторном вызове мы используем ранее полученные ссылки на view:
+
+```java
+if (convertView == null) {
+    // При первом запуске (first time inflation) создаём View и ViewHolder
+    view = LayoutInflater.from(context).inflate(R.layout.row, parent, false)
+    viewHolder = ViewHolder(view)
+    // Для быстрого последующего доступа сохраняем ViewHolder в tag-е
+    (view as ViewGroup).tag = viewHolder
+} else {
+    // Повторно использует уже существующий View
+    view = convertView
+    viewHolder = (view as ViewGroup).tag as ViewHolder
+}
+```
+
+Далее мы используем ссылки на view для настройки компонентов view:
+
+```java
+val portData = arrayList[position]
+viewHolder.apply {
+    idNumber.text = portData.id.toString()
+    writeEndpoint.text = "Write Endpoint: ${portData.writeEndpoint}"
+    readEndpoint.text = "Read Endpoint: ${portData.readEndpoint}"
+}
+```
+
+### Замена решения на RecyclerView.Adapter. RecyclerView
+
+Совет на будущее: если проект позволяет, рассмотрите замену ListView + BaseAdapter на RecyclerView + RecyclerView.Adapter. RecyclerView требует использования ViewHolder на уровне API, что исключает подобные ошибки по умолчанию, а также обеспечивает лучшую производительность и гибкость анимаций.
