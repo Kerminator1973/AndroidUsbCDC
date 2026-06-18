@@ -245,23 +245,17 @@ private class ViewHolder(view: View) {
 В реализации метода getView(), при первом запуске сохраняем информацию о View во ViewHolder. При повторном вызове мы используем ранее полученные ссылки на view:
 
 ```java
-if (convertView == null) {
-    // При первом запуске (first time inflation) создаём View и ViewHolder
-    view = LayoutInflater.from(context).inflate(R.layout.row, parent, false)
-    viewHolder = ViewHolder(view)
-    // Для быстрого последующего доступа сохраняем ViewHolder в tag-е
-    (view as ViewGroup).tag = viewHolder
-} else {
-    // Повторно использует уже существующий View
-    view = convertView
-    viewHolder = (view as ViewGroup).tag as ViewHolder
-}
+val view = convertView ?: LayoutInflater.from(context)
+    .inflate(R.layout.row, parent, false)
+    .also { it.tag = ViewHolder(it) }
 ```
 
 Далее мы используем ссылки на view для настройки компонентов view:
 
 ```java
+val viewHolder = view.tag as ViewHolder
 val portData = arrayList[position]
+
 viewHolder.apply {
     idNumber.text = portData.id.toString()
     writeEndpoint.text = "Write Endpoint: ${portData.writeEndpoint}"
