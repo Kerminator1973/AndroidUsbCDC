@@ -11,7 +11,6 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.Button
-import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -20,7 +19,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.hoho.android.usbserial.driver.UsbSerialProber
 
-class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListener {
+class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListener, OnItemClickListener  {
 
     private lateinit var prefs: AppPreferences
 
@@ -33,8 +32,6 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
     private val INTENT_ACTION_GRANT_USB = "UsbCdcApp.GRANT_USB"
 
     // Параметры, необходимые для создания списка выбора порта
-    private lateinit var listView: ListView
-
     private lateinit var recyclerView: RecyclerView
     private var arrayList: ArrayList<CdcPortData> = ArrayList()
     private var adapter: CdcPortsAdapter? = null
@@ -56,11 +53,11 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
         val dumpView = findViewById<TextView>(R.id.connection_msg)
         dumpView.typeface = Typeface.MONOSPACE
 
-        adapter = CdcPortsAdapter(this, arrayList)
+        adapter = CdcPortsAdapter(this, arrayList, this)
 
-        recyclerView = findViewById(R.id.recyclerView) // Use the ID from Step 1
-        recyclerView.layoutManager =
-            LinearLayoutManager(this) // REQUIRED: Must set a LayoutManager (Vertical list)
+        // Для корректной работы, необходимо установить LayoutManager (вертикальный список)
+        recyclerView = findViewById(R.id.recyclerView)
+        recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
 
         // Устанавливаем обработчики callback-вызовов от класса низкоуровневого
@@ -219,9 +216,12 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
     }
 
     // Обработчик выбора пользователем порта/endpoints для обмена данными
-    fun onItemClickListener(which: Int) {
-        selectedPortIndex = which
-        Toast.makeText(this.applicationContext, "Selected Port $which", Toast.LENGTH_SHORT).show()
+    override fun onItemClick(position: Int) {
+        selectedPortIndex = position
+        Toast.makeText(
+            this.applicationContext,
+            "Selected Port $position",
+            Toast.LENGTH_SHORT).show()
     }
 
     /**
@@ -278,17 +278,5 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
                 }
             }
         }
-    }
-
-    // Возобновление подписчиков после того, как приложение вернулось из сна (после ухода в resumed)
-    override fun onResume() {
-        super.onResume()
-
-/*
-        findViewById<ListView>(R.id.listView).onItemClickListener =
-            OnItemClickListener { _, _, i, _ ->
-                onItemClickListener( i) // Call the helper function
-            }
- */
     }
 }

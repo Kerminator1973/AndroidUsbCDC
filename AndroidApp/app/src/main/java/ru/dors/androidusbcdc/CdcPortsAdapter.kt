@@ -6,9 +6,18 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import android.widget.TextView
 
+// 1. Define the Callback Interface: This tells us what functionality we intend to call back.
+interface OnItemClickListener {
+    fun onItemClick(position: Int)
+}
+
+
 // Change inheritance from BaseAdapter to RecyclerView.Adapter
-class CdcPortsAdapter(private val context: Context, private val arrayList: java.util.ArrayList<CdcPortData>) :
-    RecyclerView.Adapter<CdcPortsAdapter.PortViewHolder>() { // Pass ViewHolder type here
+class CdcPortsAdapter(
+    private val context: Context,
+    private val arrayList: java.util.ArrayList<CdcPortData>,
+    private val listener: OnItemClickListener
+) : RecyclerView.Adapter<CdcPortsAdapter.PortViewHolder>() { // Pass ViewHolder type here
 
     // Update the ViewHolder class slightly for modern usage
     inner class PortViewHolder(view: ViewGroup) : RecyclerView.ViewHolder(view) {
@@ -46,9 +55,11 @@ class CdcPortsAdapter(private val context: Context, private val arrayList: java.
         holder.writeEndpoint.text = "Write Endpoint: ${portData.writeEndpoint}"
         holder.readEndpoint.text = "Read Endpoint: ${portData.readEndpoint}"
 
-        // ******* CRITICAL: Setting up click handling *******
-        // Instead of relying on a deprecated onItemClickListener, set a listener here
-        // or in the Activity (see Step 3). For simplicity, we'll add it to the ViewHolder/Adapter later.
+        // 🔑 CRITICAL STEP: Set the click listener on the entire root view of the item (the ViewHolder's itemView)
+        // This ensures that anywhere in the row can be clicked and triggers this handler.
+        holder.itemView.setOnClickListener {
+            listener.onItemClick(position) // Call back to the Activity/Host
+        }
     }
 }
 
