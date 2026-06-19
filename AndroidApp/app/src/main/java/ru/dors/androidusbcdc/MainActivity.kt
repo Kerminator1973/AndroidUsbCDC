@@ -208,7 +208,8 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
             return
         }
 
-        // Формируем список доступных Endpoints для взаимодействия с микроконтроллером
+        // Формируем список доступных Endpoints для взаимодействия с микроконтроллером,
+        // а затем передаём этот список адаптеру RecyclerView
         arrayList.clear()
         val ports = usbManager.getAvailablePorts(manager, driver)
         arrayList.addAll(ports)
