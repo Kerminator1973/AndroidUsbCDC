@@ -10,14 +10,14 @@ import android.hardware.usb.UsbManager
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
-import android.view.View
-import android.widget.AdapterView.OnItemClickListener
 import android.widget.Button
 import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.hoho.android.usbserial.driver.UsbSerialProber
 
 class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListener {
@@ -34,6 +34,8 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
 
     // Параметры, необходимые для создания списка выбора порта
     private lateinit var listView: ListView
+
+    private lateinit var recyclerView: RecyclerView
     private var arrayList: ArrayList<CdcPortData> = ArrayList()
     private var adapter: CdcPortsAdapter? = null
 
@@ -55,8 +57,11 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
         dumpView.typeface = Typeface.MONOSPACE
 
         adapter = CdcPortsAdapter(this, arrayList)
-        listView = findViewById(R.id.listView)
-        listView.adapter = adapter
+
+        recyclerView = findViewById(R.id.recyclerView) // Use the ID from Step 1
+        recyclerView.layoutManager =
+            LinearLayoutManager(this) // REQUIRED: Must set a LayoutManager (Vertical list)
+        recyclerView.adapter = adapter
 
         // Устанавливаем обработчики callback-вызовов от класса низкоуровневого
         // взаимодействия с микроконтроллером по USB CDC
@@ -278,9 +283,12 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
     // Возобновление подписчиков после того, как приложение вернулось из сна (после ухода в resumed)
     override fun onResume() {
         super.onResume()
+
+/*
         findViewById<ListView>(R.id.listView).onItemClickListener =
             OnItemClickListener { _, _, i, _ ->
                 onItemClickListener( i) // Call the helper function
             }
+ */
     }
 }

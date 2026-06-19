@@ -64,8 +64,8 @@
         app:layout_constraintStart_toEndOf="@+id/textViewStatic2"
         app:layout_constraintTop_toBottomOf="@+id/textViewDevice" />
 
-    <ListView
-        android:id="@+id/listView"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
@@ -93,7 +93,7 @@
         android:layout_marginTop="16dp"
         android:text="Exchange"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/listView" />
+        app:layout_constraintTop_toBottomOf="@+id/recyclerView" />
 
     <Button
         android:id="@+id/buttonClear"
