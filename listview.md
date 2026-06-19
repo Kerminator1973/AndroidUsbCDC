@@ -291,4 +291,21 @@ dependencies {
 
 Переписать придётся как MainActivity.kt, так и CdcPortsAdapter.kt.
 
->К сожалению, быстро переписать не удалось - в списке RecyclerView отображался только первый интерфейс (REPL), а информация о втором (data) была пустой. Необходимо внимательно разбираться с парадигмой использования RecyclerView.
+При разработке кода потребовалось поменять также "row.xml", чтобы скорректировать padding-и:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingTop="0dp"
+    android:paddingBottom="0dp"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp">
+
+    ...
+</androidx.constraintlayout.widget.ConstraintLayout>
+```
