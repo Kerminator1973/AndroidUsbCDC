@@ -6,104 +6,59 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import android.widget.TextView
 
-// 1. Define the Callback Interface: This tells us what functionality we intend to call back.
+// Определяем Callback-интерфейс, через который MainActivity сможет получить уведомление
+// о том, что пользователь осуществил выбор порта подключения
 interface OnItemClickListener {
     fun onItemClick(position: Int)
 }
 
-
-// Change inheritance from BaseAdapter to RecyclerView.Adapter
+// При создании экземпляра класса, необходимо указать не только массив портов для выбора, но
+// и экземпляр класса, который реализует интерфейс OnItemClickListener
 class CdcPortsAdapter(
     private val context: Context,
     private val arrayList: java.util.ArrayList<CdcPortData>,
     private val listener: OnItemClickListener
-) : RecyclerView.Adapter<CdcPortsAdapter.PortViewHolder>() { // Pass ViewHolder type here
+) : RecyclerView.Adapter<CdcPortsAdapter.PortViewHolder>() {
 
-    // Update the ViewHolder class slightly for modern usage
     inner class PortViewHolder(view: ViewGroup) : RecyclerView.ViewHolder(view) {
         val idNumber: TextView = view.findViewById(R.id.idNumber)
         val writeEndpoint: TextView = view.findViewById(R.id.writeEndpoint)
         val readEndpoint: TextView = view.findViewById(R.id.readEndpoint)
     }
 
-    // 1. The Adapter needs to tell the RecyclerView how many items it has. (No change in logic)
+    // Метод сообщает RecyclerView о том, сколько элементов в списке
     override fun getItemCount(): Int = arrayList.size
 
-    // Optional: If you need stable IDs for animations, implement this.
-    // For simple lists, position mapping is fine.
+    // Optional: мы можем использовать стабильные идентификаторы для анимации. Если это нужно,
+    // то необходимо полноценно реализовать этот метод
     override fun getItemId(position: Int): Long = position.toLong()
 
     /**
-     * 2. CREATE VIEW HOLDER (The equivalent of BaseAdapter's 'onCreateViewHolder')
-     * Called when the RecyclerView needs a brand new view structure.
+     * Метод создаёт View Holder. Вызывается, когда RecyclerView создаёт совершенно новый view
      */
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): PortViewHolder {
-        // Inflate the row layout
-        val view = LayoutInflater.from(context).inflate(R.layout.row, parent, false)
-        return PortViewHolder(view as ViewGroup) // Return the ViewHolder wrapper
+        val view = LayoutInflater.from(context).inflate(
+            R.layout.row, parent, false)
+        return PortViewHolder(view as ViewGroup)
     }
 
     /**
-     * 3. BIND VIEW HOLDER (The equivalent of BaseAdapter's 'getView')
-     * Called every time a view needs to be updated/displayed at a specific position.
+     * Метод позволяет связать существующий View Holder и данные для конкретной строки массива.
+     * Этот метод вызывается каждый раз, когда View необходимо обновить/отобразить элемента
+     * массива в конкретной позиции.
+     * Это аналог getView() из BaseAdapter-а
      */
     override fun onBindViewHolder(holder: PortViewHolder, position: Int) {
         val portData = arrayList[position]
 
-        // Use the ViewHolder references to set data
+        // Используем ссылку на ViewHolder для установки отображаемых данных
         holder.idNumber.text = portData.id.toString()
         holder.writeEndpoint.text = "Write Endpoint: ${portData.writeEndpoint}"
         holder.readEndpoint.text = "Read Endpoint: ${portData.readEndpoint}"
 
-        // 🔑 CRITICAL STEP: Set the click listener on the entire root view of the item (the ViewHolder's itemView)
-        // This ensures that anywhere in the row can be clicked and triggers this handler.
+        // Устанавливаем обработчик событий нажатия пользователем на элемент RecyclerView
         holder.itemView.setOnClickListener {
-            listener.onItemClick(position) // Call back to the Activity/Host
+            listener.onItemClick(position) // Вызываем Callback-метод Activity
         }
     }
 }
-
-/*
-import android.content.Context
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.BaseAdapter
-import android.widget.TextView
-
-// В данном классе используется реализация шаблона ViewHolder, который обеспечивает
-// эффективное отображение ListView
-class CdcPortsAdapter(private val context: Context, private val arrayList: java.util.ArrayList<CdcPortData>) : BaseAdapter() {
-
-    // Внутренний класс хранит ссылки на view, заменяя вызовы функции findViewById()
-    private class ViewHolder(view: View) {
-        val idNumber: TextView = view.findViewById(R.id.idNumber)
-        val writeEndpoint: TextView = view.findViewById(R.id.writeEndpoint)
-        val readEndpoint: TextView = view.findViewById(R.id.readEndpoint)
-    }
-
-    override fun getCount(): Int = arrayList.size
-    override fun getItem(position: Int): Any = position
-    override fun getItemId(position: Int): Long = position.toLong()
-
-    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-
-        // При первом запуске (first time inflation) создаём view и привязываем к нему ViewHolder
-        val view = convertView ?: LayoutInflater.from(context)
-            .inflate(R.layout.row, parent, false)
-            .also { it.tag = ViewHolder(it) }
-
-        // Используем ViewHolder для связывания данных из контейнера с view
-        val viewHolder = view.tag as ViewHolder
-        val portData = arrayList[position]
-
-        viewHolder.apply {
-            idNumber.text = portData.id.toString()
-            writeEndpoint.text = "Write Endpoint: ${portData.writeEndpoint}"
-            readEndpoint.text = "Read Endpoint: ${portData.readEndpoint}"
-        }
-
-        return view
-    }
-}
-*/

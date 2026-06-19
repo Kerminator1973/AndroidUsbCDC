@@ -309,3 +309,32 @@ dependencies {
     ...
 </androidx.constraintlayout.widget.ConstraintLayout>
 ```
+
+В файле "CdcPortAdapter.kt" сначала нам потребуется указать callback-интерфейс, через который мы будем уведомлять Activity о том, что пользователь выбрал конкретный коммуникационный порт:
+
+```java
+interface OnItemClickListener {
+    fun onItemClick(position: Int)
+}
+```
+
+В конструкторе класса мы требуем передать ссылку на класс, который реализует интерфейс OnItemClickListener:
+
+```java
+class CdcPortsAdapter(
+    private val context: Context,
+    private val arrayList: java.util.ArrayList<CdcPortData>,
+    private val listener: OnItemClickListener
+) : RecyclerView.Adapter<CdcPortsAdapter.PortViewHolder>() {
+
+    inner class PortViewHolder(view: ViewGroup) : RecyclerView.ViewHolder(view) {
+        val idNumber: TextView = view.findViewById(R.id.idNumber)
+        val writeEndpoint: TextView = view.findViewById(R.id.writeEndpoint)
+        val readEndpoint: TextView = view.findViewById(R.id.readEndpoint)
+    }
+
+```
+
+Так же мы сообщаем базовому классу RecyclerView.Adapter тип ViewHolder-а, через специализацию.
+
+Далее в необходимо определить реализацию перегруженных методов onCreateViewHolder(), onBindViewHolder(), getItemCount(), которые похожи на их реализации в обычном ListView.
