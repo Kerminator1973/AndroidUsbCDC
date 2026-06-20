@@ -15,4 +15,8 @@
     <string name="try_one_more_time">Try one more time!</string>
     <string name="connection_message_template">Writing to interface %s\n\n</string>
     <string name="please_select_port_first">Please select a port first</string>
+    <string name="exchange">Exchange</string>
+    <string name="clear">Clear</string>
+    <string name="write_endpoint">Write Endpoint:</string>
+    <string name="read_endpoint">Read Endpoint:</string>
 </resources>

@@ -91,7 +91,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
-        android:text="Exchange"
+        android:text="@string/exchange"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/recyclerView" />
 
@@ -100,7 +100,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:text="Clear"
+        android:text="@string/clear"
         app:layout_constraintStart_toEndOf="@+id/buttonExchange"
         app:layout_constraintTop_toTopOf="@+id/buttonExchange" />
 

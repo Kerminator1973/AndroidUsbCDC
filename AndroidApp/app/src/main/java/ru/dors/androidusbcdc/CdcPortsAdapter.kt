@@ -53,8 +53,8 @@ class CdcPortsAdapter(
 
         // Используем ссылку на ViewHolder для установки отображаемых данных
         holder.idNumber.text = portData.id.toString()
-        holder.writeEndpoint.text = "Write Endpoint: ${portData.writeEndpoint}"
-        holder.readEndpoint.text = "Read Endpoint: ${portData.readEndpoint}"
+        holder.writeEndpoint.text = portData.writeEndpoint.toString()
+        holder.readEndpoint.text = portData.readEndpoint.toString()
 
         // Устанавливаем обработчик событий нажатия пользователем на элемент RecyclerView
         holder.itemView.setOnClickListener {

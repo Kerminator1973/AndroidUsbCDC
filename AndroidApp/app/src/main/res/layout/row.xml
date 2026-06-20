@@ -10,7 +10,7 @@
     android:paddingStart="8dp"
     android:paddingEnd="8dp">
 
-<TextView
+    <TextView
         android:id="@+id/idNumber"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -24,26 +24,49 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
-        android:id="@+id/writeEndpoint"
+        android:id="@+id/writeLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="8dp"
-        android:text="WriteEndpoint"
+        android:layout_marginTop="4dp"
+        android:text="@string/write_endpoint"
         android:textColor="@color/black"
         android:textSize="16sp"
         app:layout_constraintStart_toEndOf="@+id/idNumber"
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
-        android:id="@+id/readEndpoint"
+        android:id="@+id/writeEndpoint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="4dp"
+        android:text="WriteEndpoint"
+        android:textColor="@color/black"
+        android:textSize="16sp"
+        app:layout_constraintStart_toEndOf="@+id/writeLabel"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/readLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:text="ReadEndpoint"
+        android:text="@string/read_endpoint"
         android:textColor="@color/black"
         android:textSize="16sp"
         app:layout_constraintStart_toEndOf="@+id/idNumber"
+        app:layout_constraintTop_toBottomOf="@+id/writeEndpoint" />
+
+    <TextView
+        android:id="@+id/readEndpoint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:text="ReadEndpoint"
+        android:textColor="@color/black"
+        android:textSize="16sp"
+        app:layout_constraintStart_toEndOf="@+id/readLabel"
         app:layout_constraintTop_toBottomOf="@+id/writeEndpoint" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
