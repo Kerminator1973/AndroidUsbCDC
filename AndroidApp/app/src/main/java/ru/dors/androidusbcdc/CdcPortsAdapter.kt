@@ -6,18 +6,15 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import android.widget.TextView
 
-// Определяем Callback-интерфейс, через который MainActivity сможет получить уведомление
-// о том, что пользователь осуществил выбор порта подключения
-interface OnItemClickListener {
-    fun onItemClick(position: Int)
-}
-
 // При создании экземпляра класса, необходимо указать не только массив портов для выбора, но
 // и экземпляр класса, который реализует интерфейс OnItemClickListener
 class CdcPortsAdapter(
     private val context: Context,
     private val arrayList: java.util.ArrayList<CdcPortData>,
-    private val listener: OnItemClickListener
+    // Мы могли бы определить Callback-интерфейс, через которым компонент мог бы уведомлять
+    // MainActivity о выборе порта пользователем. Но это выглядит избыточным. Кажется, что
+    // функциональной лямбда-функции достаточно. Unit - это аналог void в C/C++
+    private val clickListener: (position: Int) -> Unit
 ) : RecyclerView.Adapter<CdcPortsAdapter.PortViewHolder>() {
 
     inner class PortViewHolder(view: ViewGroup) : RecyclerView.ViewHolder(view) {
@@ -58,7 +55,7 @@ class CdcPortsAdapter(
 
         // Устанавливаем обработчик событий нажатия пользователем на элемент RecyclerView
         holder.itemView.setOnClickListener {
-            listener.onItemClick(position) // Вызываем Callback-метод Activity
+            clickListener(position)
         }
     }
 }

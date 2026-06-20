@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Typeface
-import android.hardware.usb.UsbManager
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -17,9 +16,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import android.hardware.usb.UsbManager
 import com.hoho.android.usbserial.driver.UsbSerialProber
 
-class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListener, OnItemClickListener  {
+class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListener {
 
     private lateinit var prefs: AppPreferences
 
@@ -53,7 +53,16 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
         val dumpView = findViewById<TextView>(R.id.connection_msg)
         dumpView.typeface = Typeface.MONOSPACE
 
-        adapter = CdcPortsAdapter(this, arrayList, this)
+        adapter = CdcPortsAdapter(this, arrayList, { position ->
+            // Обработчик выбора пользователем порта/endpoints для обмена данными
+            // (функциональная лямбда-функция)
+            selectedPortIndex = position
+
+            Toast.makeText(
+                this.applicationContext,
+                "Selected Port $position",
+                Toast.LENGTH_SHORT).show()
+        })
 
         // Для корректной работы, необходимо установить LayoutManager (вертикальный список)
         recyclerView = findViewById(R.id.recyclerView)
@@ -167,7 +176,7 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
     // --- Вспомогательные функции ---
 
     private fun handleInitialDiscoveryAndConnect() {
-        val manager = getSystemService (USB_SERVICE) as android.hardware.usb.UsbManager?
+        val manager = getSystemService (USB_SERVICE) as UsbManager?
         if (manager == null) return
 
         val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager)
@@ -216,21 +225,12 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
         adapter?.notifyDataSetChanged()
     }
 
-    // Обработчик выбора пользователем порта/endpoints для обмена данными
-    override fun onItemClick(position: Int) {
-        selectedPortIndex = position
-        Toast.makeText(
-            this.applicationContext,
-            "Selected Port $position",
-            Toast.LENGTH_SHORT).show()
-    }
-
     /**
      * Метод подключается к микроконтроллеру и передаём ему конкретную команду
      */
     private fun handleConnectionAttempt() {
 
-        val manager = getSystemService (USB_SERVICE) as? android.hardware.usb.UsbManager? ?: return
+        val manager = getSystemService (USB_SERVICE) as? UsbManager? ?: return
         val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager)
         if (availableDrivers.isEmpty()) return
 
