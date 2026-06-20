@@ -2040,3 +2040,85 @@ class CdcPortsAdapter(context: Context) :
     }
 }
 ```
+
+## How You Would Implement It Using SharedFlow (For Learning Purposes)
+ 
+If your goal was specifically to practice reactive programming and you needed the click event to interact deeply with ViewModels, here is how it would look:
+
+### Step 1: Modify CdcPortsAdapter
+
+The adapter needs a CoroutineScope reference to emit events. It should also expose a flow stream for collection.
+
+```
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+
+class CdcPortsAdapter(
+    // ... (constructor params) ...
+) : RecyclerView.Adapter<CdcPortsAdapter.PortViewHolder>() {
+
+    // 1. Define the Mutable SharedFlow that holds the event stream
+    private val _itemClicked = MutableSharedFlow<Int>(extraBufferCapacity = 1)
+    val itemClicked: SharedFlow<Int> = _itemClicked
+
+    // ... (onCreateView and ViewHolder setup remains the same) ...
+
+    override fun onBindViewHolder(holder: PortViewHolder, position: Int) {
+        // ... (setting text views) ...
+
+        // 2. Emit the event into the Flow instead of calling a function
+        holder.itemView.setOnClickListener {
+            runBlocking { // Note: In a real app, you'd need proper scope management here
+                _itemClicked.emit(position)
+            }
+        }
+    }
+}
+```
+
+### Step 2: Modify MainActivity (The Collector)
+
+The activity must launch a coroutine to listen for the events and process them in the background, respecting its lifecycle.
+
+```
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch // Need coroutines dependency
+// ...
+
+class MainActivity : AppCompatActivity() { 
+    // Remove implementing OnItemClickListener here!
+
+    // Use lateinit var for the Flow/Adapter reference setup
+    private var adapter: CdcPortsAdapter? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // ... (initial setup) ...
+
+        adapter = CdcPortsAdapter(this, arrayList, /* No listener here */)
+
+        recyclerView = findViewById(R.id.recyclerView)
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        recyclerView.adapter = adapter
+
+        // 3. Collect the Flow when the activity is ready (in lifecycleScope)
+        lifecycleScope.launch {
+            adapter?.itemClicked?.collect { position ->
+                // This block executes every time an item is clicked
+                onItemClickedInActivity(position)
+            }
+        }
+
+        // ... (rest of onCreate) ...
+    }
+
+    private fun onItemClickedInActivity(position: Int) {
+        // The processing logic moves here, keeping the adapter clean.
+        selectedPortIndex = position
+        Toast.makeText(this@MainActivity.applicationContext, "Selected Port $position", Toast.LENGTH_SHORT).show()
+    }
+
+    // If you used this pattern, you would remove:
+    // override fun onItemClick(position: Int) { ... }
+}
+```
