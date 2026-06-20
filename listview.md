@@ -340,3 +340,43 @@ class CdcPortsAdapter(
 Далее в необходимо определить реализацию перегруженных методов onCreateViewHolder(), onBindViewHolder(), getItemCount(), которые похожи на их реализации в обычном ListView.
 
 >По факту, использование RecyclerView сильно упрощает разработку списка элементов в приложении. RecyclerView много чего прячет "под капотом", не нужно в Activity обрабатывать "чужие" события - click-и обрабатывает сам адаптер в соответствии со своей логикой. Важно, что при использовании RecyclerView не нужно восстанавливать подписки на click-и в onResume()
+
+### Ещё одно изменение - использование функциональной лямбда-функции
+
+В приведённом выше решении есть некоторая избыточность - определён дополнительный интерфейс OnItemClickListener, через который CdcPortsAdapter передаёт информацию о нажатой кнопке. Соответственно, в этом случае MainActivity должен явно указать, что он реализует этот интерфейс, а CdcPortsAdapter должен получать ссылку на экземпляр класса, который этот интерфейс реализует.
+
+В некотором смысле, определение нового интерфейса засоряет пространство имён и кажется разумным от него отказаться, Это можно сделать с помощью лямбда-функции.
+
+В CdcPortsAdapter нам достаточно изменить конструктор:
+
+```java
+class CdcPortsAdapter(
+    private val context: Context,
+    private val arrayList: java.util.ArrayList<CdcPortData>,
+    private val clickListener: (position: Int) -> Unit
+) : RecyclerView.Adapter<CdcPortsAdapter.PortViewHolder>() {
+```
+
+Т.е. третьим параметром мы вместо ссылки на объект, реализующий интерфейс OnItemClickListener получаем функциональный объект. Заметим, что Unit - это аналог void в C/C++.
+
+Далее мы связываем нажатие элемента списка с переданным нам в конструкторе функциональным объектом:
+
+```java
+override fun onBindViewHolder(holder: PortViewHolder, position: Int) {
+
+    //...
+    holder.itemView.setOnClickListener {
+        clickListener(position)
+    }
+}
+```
+
+Что касается MainActivity, то в нём нам достаточно определить лямбда-функцию:
+
+```java
+adapter = CdcPortsAdapter(this, arrayList, { position ->
+
+    selectedPortIndex = position
+    // ...
+})
+```
