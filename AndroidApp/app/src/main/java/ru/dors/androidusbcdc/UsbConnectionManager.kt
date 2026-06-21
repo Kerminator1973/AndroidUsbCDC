@@ -4,6 +4,9 @@ import android.content.Context
 import com.hoho.android.usbserial.driver.UsbSerialDriver
 import com.hoho.android.usbserial.driver.UsbSerialPort
 import com.hoho.android.usbserial.util.SerialInputOutputManager
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 /**
  * Класс управляет установлением соединения и передачей данных
@@ -12,6 +15,7 @@ import com.hoho.android.usbserial.util.SerialInputOutputManager
  */
 class UsbConnectionManager(private val context: Context) {
 
+/*
     // Определяем Callback-интерфейс для информирования пользовательского
     // интерфейса (MainActivity - UI layer) об ошибках и полученных данных
     interface ConnectionListener {
@@ -21,22 +25,40 @@ class UsbConnectionManager(private val context: Context) {
         fun onConnectionFailure(message: String)
     }
 
+    // Экземпляр подписчика (внешний код) на события USB CDC
+    private var listener: ConnectionListener? = null
+
+    fun setConnectionListener(listener: ConnectionListener) {
+        this.listener = listener
+    }
+*/
+    // Используем Flows/Channels для реактивных потоков, вместо callback-функций
+    companion object {
+        const val TAG = "UsbService"
+
+        // Информирование о получении данных от подключенного устройства (поток байт)
+        private val _incomingData = MutableSharedFlow<ByteArray>(extraBufferCapacity = 64)
+        val incomingData: SharedFlow<ByteArray> = _incomingData.asSharedFlow()
+
+        // Информирование об ошибке в человекочитаемом формате
+        private val _errors = MutableSharedFlow<String>(extraBufferCapacity = 32)
+        val errors: SharedFlow<String> = _errors.asSharedFlow()
+
+        // Информирование об успешном подключении к USB-устройству
+        private val _connection_success = MutableSharedFlow<String>(extraBufferCapacity = 32)
+        val connection_success: SharedFlow<String> = _connection_success.asSharedFlow()
+
+        // Информирование о разрыве соединения с USB-устройством
+        private val _connection_failure = MutableSharedFlow<String>(extraBufferCapacity = 32)
+        val connection_failure: SharedFlow<String> = _connection_failure.asSharedFlow()
+    }
+
     // Переменные, определяющее внутреннее состояние класса
     private var mPort: UsbSerialPort? = null
     var serialInputOutputManager: SerialInputOutputManager? = null
 
-    // Экземпляр подписчика (внешний код) на события USB CDC
-    private var listener: ConnectionListener? = null
-
     // Текущий индекс подключенного порта
     var currentSelectedPortIndex: Int = 0
-
-    /**
-     * Метод, через который можно указать подписчика на события
-     */
-    fun setConnectionListener(listener: ConnectionListener) {
-        this.listener = listener
-    }
 
     /**
      * Метод получает список достуных портов, основываясь на данных, полученных от UsbManager.
@@ -82,20 +104,20 @@ class UsbConnectionManager(private val context: Context) {
         disconnect()
 
         if (selectedPortIndex == null) {
-            listener?.onError("Error: No port selected.")
+            _errors.tryEmit("Error: No valid port selected.")
             return
         }
 
         try {
             val connection = manager.openDevice(driver.device) ?: run {
-                listener?.onConnectionFailure("Could not open device connection.")
+                _connection_failure.tryEmit("Could not open device connection.")
                 return
             }
 
             // 2. Устанавливаем порт, через который будет осуществляться дальнейшая работа
             mPort = driver.ports[selectedPortIndex]
             if (mPort == null) {
-                listener?.onConnectionFailure("Failed to select port index $currentSelectedPortIndex.")
+                _connection_failure.tryEmit("Failed to select port index $currentSelectedPortIndex.")
                 return
             }
 
@@ -113,10 +135,10 @@ class UsbConnectionManager(private val context: Context) {
             // обмена данными между Arduino/Pico и Android
             mPort?.rts = true
 
-            listener?.onConnectionSuccess("Successfully connected to port ${selectedPortIndex}.")
+            _connection_success.tryEmit("Successfully connected to port ${selectedPortIndex}.")
 
         } catch (e: Exception) {
-            listener?.onError("Failed to establish connection: " + e.message)
+            _errors.tryEmit("Failed to establish connection: " + e.message)
         }
     }
 
@@ -133,13 +155,12 @@ class UsbConnectionManager(private val context: Context) {
             override fun onRunError(errorMsg: Exception) {
                 // Уведомляем UI о возникновении ошибки. При использовании Pico, эта ошибка
                 // возникает после переключения на REPL и возврат на data interface
-                listener?.onError("Runtime Error: ${errorMsg.message}")
+                _errors.tryEmit("Runtime Error: ${errorMsg.message}")
             }
 
             override fun onNewData(data: ByteArray) {
-                // Передаём dump полученных данных для визуального анализа пользователем
-                val hexString = data.toHex() + "\n"
-                listener?.onDataReceived(hexString)
+                // Передаём полченные данные подписчику
+                _incomingData.tryEmit(data)
             }
         }
 
@@ -154,13 +175,13 @@ class UsbConnectionManager(private val context: Context) {
      */
     fun sendCommand(command: ByteArray) {
         if (mPort == null) {
-            listener?.onError("Cannot send command: No active port connection.")
+            _errors.tryEmit("Cannot send command: No active port connection.")
             return
         }
         try {
             mPort?.write(command, 0)
         } catch (e: Exception) {
-            listener?.onError("Error sending command: ${e.message}")
+            _errors.tryEmit("Error sending command: ${e.message}")
         }
     }
 
@@ -174,6 +195,8 @@ class UsbConnectionManager(private val context: Context) {
         serialInputOutputManager?.stop()
         mPort = null
         serialInputOutputManager = null
-        listener?.onConnectionSuccess("Disconnected from USB CDC.")
+
+        // TODO: странное, что о разрыве соединения отправляется событие _connection_success
+        _connection_success.tryEmit("Disconnected from USB CDC.")
     }
 }

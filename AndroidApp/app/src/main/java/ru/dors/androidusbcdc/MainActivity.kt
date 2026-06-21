@@ -17,9 +17,16 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import android.hardware.usb.UsbManager
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.hoho.android.usbserial.driver.UsbSerialProber
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import ru.dors.androidusbcdc.UsbConnectionManager.Companion.incomingData
 
-class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListener {
+class MainActivity : AppCompatActivity() {
 
     private lateinit var prefs: AppPreferences
 
@@ -71,7 +78,8 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
 
         // Устанавливаем обработчики callback-вызовов от класса низкоуровневого
         // взаимодействия с микроконтроллером по USB CDC
-        usbManager.setConnectionListener(this)
+        observeConnectionManager()
+        //usbManager.setConnectionListener(this)
 
         // Кнопка: начальное подключение к микроконтроллеру, в том числе, для получения pid/vid
         val initialConnectButton = findViewById<Button>(R.id.button)
@@ -89,6 +97,52 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
         val buttonClear = findViewById<Button>(R.id.buttonClear)
         buttonClear.setOnClickListener {
             findViewById<TextView>(R.id.connection_msg).text = ""
+        }
+    }
+
+    private fun observeConnectionManager() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    incomingData.collect { data : ByteArray ->
+                        withContext(Dispatchers.Main) {
+                            val textView = findViewById<TextView>(R.id.connection_msg)
+                            textView.append(data.toHex() + "\n")
+                        }
+                    }
+                }
+                launch {
+                    UsbConnectionManager.errors.collect { message : String ->
+                        withContext(Dispatchers.Main) {
+                            val textView = findViewById<TextView>(R.id.connection_msg)
+                            textView.append("\n[ERROR] $message")
+                        }
+                    }
+                }
+                launch {
+                    // Наблюдение за успешным подключением
+                    UsbConnectionManager.connection_success.collect { message : String ->
+                        withContext(Dispatchers.Main) {
+                            val textView = findViewById<TextView>(R.id.connection_msg)
+                            textView.append("\n[STATUS] $message\n")
+                            Toast.makeText(this@MainActivity,
+                                "Connected!", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                launch {
+                    // Наблюдение за разрывом соединения
+                    UsbConnectionManager.connection_failure.collect { message : String ->
+                        withContext(Dispatchers.Main) {
+                            val textView = findViewById<TextView>(R.id.connection_msg)
+                            textView.append("\n[FAILURE] $message")
+                            Toast.makeText(this@MainActivity,
+                                "Connection Failed",Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -115,17 +169,20 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
     /**
      * Callback-метод вызывается, когда получены данные от USB CDC устройства
      */
+    /*
     override fun onDataReceived(hexString: String) {
         runOnUiThread {
             val textView = findViewById<TextView>(R.id.connection_msg)
             textView.append(hexString)
         }
     }
+    */
 
     /**
      * Вызывается UsbConnectionManager когда возникает какая-то ошибка при подключении,
      * или передаче данных
      */
+    /*
     override fun onError(message: String) {
         runOnUiThread {
             val textView = findViewById<TextView>(R.id.connection_msg)
@@ -134,10 +191,12 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
 
         Toast.makeText(this, "Connection Error", Toast.LENGTH_SHORT).show()
     }
+     */
 
     /**
      * Вызывается UsbConnectionManager когда соединение с микроконтроллером успешно установлено
      */
+    /*
     override fun onConnectionSuccess(message: String) {
         runOnUiThread {
             val textView = findViewById<TextView>(R.id.connection_msg)
@@ -145,10 +204,12 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
             Toast.makeText(this, "Connected!", Toast.LENGTH_SHORT).show()
         }
     }
+     */
 
     /**
      * Вызывается UsbConnectionManager когда попытка соединения была неуспешной
      */
+    /*
     override fun onConnectionFailure(message: String) {
         runOnUiThread {
             val textView = findViewById<TextView>(R.id.connection_msg)
@@ -156,6 +217,7 @@ class MainActivity : AppCompatActivity(), UsbConnectionManager.ConnectionListene
         }
         Toast.makeText(this, "Connection Failed", Toast.LENGTH_SHORT).show()
     }
+     */
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         // Включаем описание меню из ресурса "options_menu" в качестве меню в AppBar
