@@ -30,7 +30,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var prefs: AppPreferences
 
-    // Для взвимодействия с микроконтроллером будет использовать экземпляр вспомогательного
+    // Для взаимодействия с микроконтроллером будет использовать экземпляр вспомогательного
     // класса UsbConnectionManager
     private var usbManager: UsbConnectionManager = UsbConnectionManager(this)
 
@@ -126,7 +126,7 @@ class MainActivity : AppCompatActivity() {
                             val textView = findViewById<TextView>(R.id.connection_msg)
                             textView.append("\n[STATUS] $message\n")
                             Toast.makeText(this@MainActivity,
-                                "Connected!", Toast.LENGTH_SHORT).show()
+                                message, Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -163,61 +163,6 @@ class MainActivity : AppCompatActivity() {
         super.onStop()
         unregisterReceiver(usbCdcStateReceiver)
     }
-
-    // --- Обработчики callback-сообщений микроконтроллера (от UsbConnectionManager)
-
-    /**
-     * Callback-метод вызывается, когда получены данные от USB CDC устройства
-     */
-    /*
-    override fun onDataReceived(hexString: String) {
-        runOnUiThread {
-            val textView = findViewById<TextView>(R.id.connection_msg)
-            textView.append(hexString)
-        }
-    }
-    */
-
-    /**
-     * Вызывается UsbConnectionManager когда возникает какая-то ошибка при подключении,
-     * или передаче данных
-     */
-    /*
-    override fun onError(message: String) {
-        runOnUiThread {
-            val textView = findViewById<TextView>(R.id.connection_msg)
-            textView.append("\n[ERROR] $message")
-        }
-
-        Toast.makeText(this, "Connection Error", Toast.LENGTH_SHORT).show()
-    }
-     */
-
-    /**
-     * Вызывается UsbConnectionManager когда соединение с микроконтроллером успешно установлено
-     */
-    /*
-    override fun onConnectionSuccess(message: String) {
-        runOnUiThread {
-            val textView = findViewById<TextView>(R.id.connection_msg)
-            textView.append("\n[STATUS] $message\n")
-            Toast.makeText(this, "Connected!", Toast.LENGTH_SHORT).show()
-        }
-    }
-     */
-
-    /**
-     * Вызывается UsbConnectionManager когда попытка соединения была неуспешной
-     */
-    /*
-    override fun onConnectionFailure(message: String) {
-        runOnUiThread {
-            val textView = findViewById<TextView>(R.id.connection_msg)
-            textView.append("\n[FAILURE] $message")
-        }
-        Toast.makeText(this, "Connection Failed", Toast.LENGTH_SHORT).show()
-    }
-     */
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         // Включаем описание меню из ресурса "options_menu" в качестве меню в AppBar

@@ -15,26 +15,8 @@ import kotlinx.coroutines.flow.asSharedFlow
  */
 class UsbConnectionManager(private val context: Context) {
 
-/*
-    // Определяем Callback-интерфейс для информирования пользовательского
-    // интерфейса (MainActivity - UI layer) об ошибках и полученных данных
-    interface ConnectionListener {
-        fun onDataReceived(hexString: String)
-        fun onError(message: String)
-        fun onConnectionSuccess(message: String)
-        fun onConnectionFailure(message: String)
-    }
-
-    // Экземпляр подписчика (внешний код) на события USB CDC
-    private var listener: ConnectionListener? = null
-
-    fun setConnectionListener(listener: ConnectionListener) {
-        this.listener = listener
-    }
-*/
     // Используем Flows/Channels для реактивных потоков, вместо callback-функций
     companion object {
-        const val TAG = "UsbService"
 
         // Информирование о получении данных от подключенного устройства (поток байт)
         private val _incomingData = MutableSharedFlow<ByteArray>(extraBufferCapacity = 64)
@@ -197,6 +179,6 @@ class UsbConnectionManager(private val context: Context) {
         serialInputOutputManager = null
 
         // TODO: странное, что о разрыве соединения отправляется событие _connection_success
-        _connection_success.tryEmit("Disconnected from USB CDC.")
+        _connection_success.tryEmit("Disconnected from USB CDC")
     }
 }
