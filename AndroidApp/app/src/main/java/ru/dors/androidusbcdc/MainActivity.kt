@@ -102,6 +102,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
+                    // Обработка полученных от микроконтроллера данных
                     incomingData.collect { data : ByteArray ->
                         withContext(Dispatchers.Main) {
                             val textView = findViewById<TextView>(R.id.connection_msg)
@@ -110,6 +111,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 launch {
+                    // Обработка событий о сбоях в работе с микроконтроллером
                     UsbConnectionManager.errors.collect { message : String ->
                         withContext(Dispatchers.Main) {
                             val textView = findViewById<TextView>(R.id.connection_msg)
@@ -118,7 +120,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 launch {
-                    // Наблюдение за успешным подключением
+                    // Наблюдение за состояние подключения
                     UsbConnectionManager.connection_status.collect { message : String ->
                         withContext(Dispatchers.Main) {
                             Toast.makeText(this@MainActivity,
@@ -252,7 +254,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Метод подписывается на системые сообщения (Broadcast Receiver). Цель - если система
+    // Метод подписывается на системные сообщения (Broadcast Receiver). Цель - если система
     // разрешит работу с USB CDC, метод информирует об этом пользователя
     private val usbCdcStateReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
