@@ -76,10 +76,8 @@ class MainActivity : AppCompatActivity() {
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
 
-        // Устанавливаем обработчики callback-вызовов от класса низкоуровневого
-        // взаимодействия с микроконтроллером по USB CDC
+        // Подписываемся на сообщения от микроконтроллера подключенного через USB CDC
         observeConnectionManager()
-        //usbManager.setConnectionListener(this)
 
         // Кнопка: начальное подключение к микроконтроллеру, в том числе, для получения pid/vid
         val initialConnectButton = findViewById<Button>(R.id.button)
@@ -107,7 +105,7 @@ class MainActivity : AppCompatActivity() {
                     incomingData.collect { data : ByteArray ->
                         withContext(Dispatchers.Main) {
                             val textView = findViewById<TextView>(R.id.connection_msg)
-                            textView.append(data.toHex() + "\n")
+                            textView.append("\n" + data.toHex())
                         }
                     }
                 }
@@ -121,24 +119,10 @@ class MainActivity : AppCompatActivity() {
                 }
                 launch {
                     // Наблюдение за успешным подключением
-                    UsbConnectionManager.connection_success.collect { message : String ->
+                    UsbConnectionManager.connection_status.collect { message : String ->
                         withContext(Dispatchers.Main) {
-                            val textView = findViewById<TextView>(R.id.connection_msg)
-                            textView.append("\n[STATUS] $message\n")
                             Toast.makeText(this@MainActivity,
                                 message, Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-                launch {
-                    // Наблюдение за разрывом соединения
-                    UsbConnectionManager.connection_failure.collect { message : String ->
-                        withContext(Dispatchers.Main) {
-                            val textView = findViewById<TextView>(R.id.connection_msg)
-                            textView.append("\n[FAILURE] $message")
-                            Toast.makeText(this@MainActivity,
-                                "Connection Failed",Toast.LENGTH_SHORT
-                            ).show()
                         }
                     }
                 }

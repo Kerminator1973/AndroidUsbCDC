@@ -26,13 +26,9 @@ class UsbConnectionManager(private val context: Context) {
         private val _errors = MutableSharedFlow<String>(extraBufferCapacity = 32)
         val errors: SharedFlow<String> = _errors.asSharedFlow()
 
-        // Информирование об успешном подключении к USB-устройству
-        private val _connection_success = MutableSharedFlow<String>(extraBufferCapacity = 32)
-        val connection_success: SharedFlow<String> = _connection_success.asSharedFlow()
-
-        // Информирование о разрыве соединения с USB-устройством
-        private val _connection_failure = MutableSharedFlow<String>(extraBufferCapacity = 32)
-        val connection_failure: SharedFlow<String> = _connection_failure.asSharedFlow()
+        // Информирование об изменении состояния соединения
+        private val _connection_status = MutableSharedFlow<String>(extraBufferCapacity = 32)
+        val connection_status: SharedFlow<String> = _connection_status.asSharedFlow()
     }
 
     // Переменные, определяющее внутреннее состояние класса
@@ -92,14 +88,14 @@ class UsbConnectionManager(private val context: Context) {
 
         try {
             val connection = manager.openDevice(driver.device) ?: run {
-                _connection_failure.tryEmit("Could not open device connection.")
+                _connection_status.tryEmit("Couldn't open device connection")
                 return
             }
 
             // 2. Устанавливаем порт, через который будет осуществляться дальнейшая работа
             mPort = driver.ports[selectedPortIndex]
             if (mPort == null) {
-                _connection_failure.tryEmit("Failed to select port index $currentSelectedPortIndex.")
+                _connection_status.tryEmit("Failed to select port $currentSelectedPortIndex")
                 return
             }
 
@@ -117,7 +113,7 @@ class UsbConnectionManager(private val context: Context) {
             // обмена данными между Arduino/Pico и Android
             mPort?.rts = true
 
-            _connection_success.tryEmit("Successfully connected to port ${selectedPortIndex}.")
+            _connection_status.tryEmit("Successfully connected to port ${selectedPortIndex}.")
 
         } catch (e: Exception) {
             _errors.tryEmit("Failed to establish connection: " + e.message)
@@ -178,7 +174,6 @@ class UsbConnectionManager(private val context: Context) {
         mPort = null
         serialInputOutputManager = null
 
-        // TODO: странное, что о разрыве соединения отправляется событие _connection_success
-        _connection_success.tryEmit("Disconnected from USB CDC")
+        _connection_status.tryEmit("Disconnected from USB CDC")
     }
 }
