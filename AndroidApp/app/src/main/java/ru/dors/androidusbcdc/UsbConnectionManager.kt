@@ -133,12 +133,11 @@ class UsbConnectionManager(private val context: Context) {
             override fun onRunError(errorMsg: Exception) {
                 // Уведомляем UI о возникновении ошибки. При использовании Pico, эта ошибка
                 // возникает после переключения на REPL и возврат на data interface
-                _errors.tryEmit("Runtime Error: ${errorMsg.message}")
+                _errors.tryEmit(errorMsg.message.toString())
             }
 
             override fun onNewData(data: ByteArray) {
-                // Передаём полченные данные подписчику
-                _incomingData.tryEmit(data)
+                _incomingData.tryEmit(data)     // Передаём полченные данные подписчику
             }
         }
 

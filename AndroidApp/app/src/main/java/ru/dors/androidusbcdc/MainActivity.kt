@@ -150,22 +150,6 @@ class MainActivity : AppCompatActivity() {
         unregisterReceiver(usbCdcStateReceiver)
     }
 
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        // Включаем описание меню из ресурса "options_menu" в качестве меню в AppBar
-        menuInflater.inflate(R.menu.options_menu, menu)
-        return true
-    }
-
-    // Обработчик нажатия кнопки "Options" в пользовательском интерфейсе
-    override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
-        R.id.action_settings -> {
-            val intent = Intent(this, OptionsActivity::class.java)
-            startActivity(intent)
-            true
-        }
-        else -> super.onOptionsItemSelected(item)
-    }
-
     // --- Вспомогательные функции ---
 
     private fun handleInitialDiscoveryAndConnect() {
@@ -272,5 +256,22 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    // Организация меню "Options", переход в OptionsActivity
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        // Включаем описание меню из ресурса "options_menu" в качестве меню в AppBar
+        menuInflater.inflate(R.menu.options_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem) = when (item.itemId) {
+        R.id.action_settings -> {
+            val intent = Intent(this, OptionsActivity::class.java)
+            startActivity(intent)
+            true
+        }
+        else -> super.onOptionsItemSelected(item)
     }
 }
