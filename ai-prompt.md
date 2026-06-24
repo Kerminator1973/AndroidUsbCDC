@@ -51,7 +51,7 @@ I have identified four critical areas that require refactoring:
 
 >Что такое **SOC Principles** в программировании?
 >
->SOC — это Separation of Concerns («разделение ответственностей/аспектов»), один из ключевых принципов проектирования в программировании и программной инженерии.
+>SOC — это Separation of Concerns ("разделение ответственностей/аспектов"), один из ключевых принципов проектирования в программировании и программной инженерии.
 >
 >Принцип SOC гласит: сложную систему нужно разбивать на части (модули, компоненты, слои), каждая из которых отвечает за свою отдельную «заботу» (concern) — то есть решает одну чётко очерченную задачу. Тогда изменения в одной части минимально влияют на другие, а разбираться в коде становится проще.
 >
@@ -61,7 +61,11 @@ I have identified four critical areas that require refactoring:
 >- бизнес‑логику — реализует правила предметной области;
 >- слой доступа к данным — работает с базой данных, файлами и т. п.
 >
->Каждая из этих частей — отдельная «забота», и они должны быть максимально независимы друг от друга.
+>Каждая из этих частей — отдельная "забота", и они должны быть максимально независимы друг от друга.
+>
+>**Separation of Concerns** (SOC) — более широкий, фундаментальный принцип проектирования. **Single Responsibility Principle** (SRP) — его конкретизация для уровня классов и модулей в объектно‑ориентированном программировании.
+>
+>Простыми словами: SOC говорит, как делить систему на крупные части, а SRP подсказывает, как проектировать отдельные элементы внутри этих частей.
 
 💻 Refactored Code
 Due to the scope of changes required (introducing a ViewModel and restructuring class responsibilities), I will introduce two new conceptual files: MainViewModel.kt and UsbManagerWrapper.kt (to encapsulate USB logic).
@@ -112,6 +116,8 @@ class AppPreferences(context: Context) {
     }
 }
 ```
+
+>Сравнил с моим кодом. Рекомендацию оцениваю как сомнительную.
 
 3. CdcPortsAdapter.kt (Improved Safety/Efficiency)
 While the logic remains similar, we enforce immutability by requiring the list passed in to be treated as read-only and add a mechanism to handle explicit state updates, improving thread safety and maintainability.
@@ -172,6 +178,19 @@ class CdcPortsAdapter(
     }
 }
 ```
+
+>Основная идея состоит в том, чтобы передавать список не через конструктор, а через метод updateData(), что позволяет:
+>
+>- не пересоздавать CdcPortsAdapter при изменении списка
+>- блокировать возможность изменения данных, которые были переданы по ссылке в конструкторе, на дублирование внешнего контейнера: `this.portList = newPorts.toList()`. Это приводит к тому, что внешний контейнер нельзя изменить из реализации CdcPortsAdapter
+>
+>Pro: объект CdcPortsAdapter не пересоздаётся, а переиспользуется; внешний список - immutable
+>
+>Contra: дополнительные расходы на создание списка ссылок, с помощью toList()
+>
+>Следует заметить, что класс List, в отличие от mutableList не содержит методов для изменения содержимого.
+>
+>Подсказка кажется достаточно здравой!
 
 5. UsbManagerWrapper.kt (New File - Encapsulation/State Management)
 This new class encapsulates all raw Android USB calls, making MainActivity significantly cleaner and improving testability by abstracting device interaction away from the UI layer.
