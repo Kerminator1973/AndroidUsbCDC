@@ -49,6 +49,20 @@ I have identified four critical areas that require refactoring:
 - **Resource Management** in Connection Layer (UsbConnectionManager): The method getAvailablePorts is dangerous because it opens multiple physical device connections/resources within a loop without proper cleanup handling, potentially leading to resource leaks or race conditions if not carefully managed with try-finally.
 - **Inefficient Preference Writing** (AppPreferences): Setting boolean preferences using .edit().putBoolean(key, value).apply() is boilerplate and creates unnecessary temporary objects. While functional, it obscures the intent and adds minor overhead.
 
+>Что такое **SOC Principles** в программировании?
+>
+>SOC — это Separation of Concerns («разделение ответственностей/аспектов»), один из ключевых принципов проектирования в программировании и программной инженерии.
+>
+>Принцип SOC гласит: сложную систему нужно разбивать на части (модули, компоненты, слои), каждая из которых отвечает за свою отдельную «заботу» (concern) — то есть решает одну чётко очерченную задачу. Тогда изменения в одной части минимально влияют на другие, а разбираться в коде становится проще.
+>
+>Пример: в типичном веб‑приложении выделяют:
+>
+>- слой представления (UI) — отвечает за отображение данных и обработку действий пользователя;
+>- бизнес‑логику — реализует правила предметной области;
+>- слой доступа к данным — работает с базой данных, файлами и т. п.
+>
+>Каждая из этих частей — отдельная «забота», и они должны быть максимально независимы друг от друга.
+
 💻 Refactored Code
 Due to the scope of changes required (introducing a ViewModel and restructuring class responsibilities), I will introduce two new conceptual files: MainViewModel.kt and UsbManagerWrapper.kt (to encapsulate USB logic).
 
