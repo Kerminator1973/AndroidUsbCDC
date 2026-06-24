@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import android.hardware.usb.UsbManager
+import android.widget.ScrollView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -94,7 +95,7 @@ class MainActivity : AppCompatActivity() {
         // Кнопка: очистить поле с результатами логирования
         val buttonClear = findViewById<Button>(R.id.buttonClear)
         buttonClear.setOnClickListener {
-            findViewById<TextView>(R.id.connection_msg).text = ""
+            dumpView.text = ""
         }
     }
 
@@ -105,8 +106,7 @@ class MainActivity : AppCompatActivity() {
                     // Обработка полученных от микроконтроллера данных
                     incomingData.collect { data : ByteArray ->
                         withContext(Dispatchers.Main) {
-                            val textView = findViewById<TextView>(R.id.connection_msg)
-                            textView.append("\n" + data.toHex())
+                            logMessage(data.toHex())
                         }
                     }
                 }
@@ -114,8 +114,7 @@ class MainActivity : AppCompatActivity() {
                     // Обработка событий о сбоях в работе с микроконтроллером
                     UsbConnectionManager.errors.collect { message : String ->
                         withContext(Dispatchers.Main) {
-                            val textView = findViewById<TextView>(R.id.connection_msg)
-                            textView.append("\n[ERROR] $message")
+                            logMessage("[ERROR] $message")
                         }
                     }
                 }
@@ -128,6 +127,29 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Logs a message to the connection log view and scrolls reliably to the bottom.
+     */
+    private fun logMessage(message: String) {
+        // Find the TextView ID which is now inside a ScrollView container in XML
+        val textView = findViewById<TextView>(R.id.connection_msg)
+
+        // 1. Append the text data first
+        textView.append("\n$message")
+
+        // 2. Use post {} to ensure scrolling happens AFTER the layout/drawing cycle completes
+        findViewById<ScrollView>(R.id.scroll_connection_msg_container)?.post {
+            // ScrollView must be scrolled using its dimensions
+            // We scroll to (0, container's total height)
+            val scrollView = findViewById<ScrollView>(R.id.scroll_connection_msg_container)
+
+            if (scrollView != null && textView.length() > 0) {
+                // Use smoothScrollTo for a smoother visual effect
+                scrollView.smoothScrollBy(0, scrollView.height)
             }
         }
     }
@@ -158,7 +180,7 @@ class MainActivity : AppCompatActivity() {
 
         val availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager)
         if (availableDrivers.isEmpty()) {
-            findViewById<TextView>(R.id.connection_msg).text = getString(R.string.text_driver_unavailable)
+            logMessage(getString(R.string.text_driver_unavailable))
             return
         }
 
@@ -178,9 +200,8 @@ class MainActivity : AppCompatActivity() {
             // Permissions будут отсутствовать, если отказаться запустить приложение
             // при подключении кабеля к мобильному телефону
 
-            val textView = findViewById<TextView>(R.id.connection_msg)
             val message = getString(R.string.text_need_permission)
-            textView.append("\n[ERROR] $message")
+            logMessage("[ERROR] $message")
 
             val usbPermissionIntent = PendingIntent.getBroadcast(
                 this@MainActivity,
@@ -229,12 +250,11 @@ class MainActivity : AppCompatActivity() {
 
             } catch (_: Exception) {
 
-                val textView = findViewById<TextView>(R.id.connection_msg)
                 val message = getString(R.string.text_exception)
-                textView.append("\n[EXCEPTION] $message")
+                logMessage("[EXCEPTION] $message")
             }
         } else {
-            findViewById<TextView>(R.id.connection_msg).text = getString(R.string.please_select_port_first)
+            logMessage(getString(R.string.please_select_port_first))
         }
     }
 
@@ -250,7 +270,7 @@ class MainActivity : AppCompatActivity() {
 
                 if (usbPermission) {
                     Toast.makeText(this@MainActivity, "Granted", Toast.LENGTH_LONG).show()
-                    findViewById<TextView>(R.id.connection_msg).text = getString(R.string.try_one_more_time)
+                    logMessage(getString(R.string.try_one_more_time))
                 } else {
                     Toast.makeText(this@MainActivity, "Denied", Toast.LENGTH_LONG).show()
                 }
