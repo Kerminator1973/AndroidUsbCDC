@@ -6,25 +6,33 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import android.widget.TextView
 
-// При создании экземпляра класса, необходимо указать не только массив портов для выбора, но
-// и экземпляр класса, который реализует интерфейс OnItemClickListener
 class CdcPortsAdapter(
     private val context: Context,
-    private val arrayList: java.util.ArrayList<CdcPortData>,
     // Мы могли бы определить Callback-интерфейс, через которым компонент мог бы уведомлять
     // MainActivity о выборе порта пользователем. Но это выглядит избыточным. Кажется, что
     // функциональной лямбда-функции достаточно. Unit - это аналог void в C/C++
     private val clickListener: (position: Int) -> Unit
 ) : RecyclerView.Adapter<CdcPortsAdapter.PortViewHolder>() {
 
-    inner class PortViewHolder(view: ViewGroup) : RecyclerView.ViewHolder(view) {
+    // Класс List не содержит методов для изменения содержимого, что позволяет говорить
+    // о том, что повлиять на изменяемый внешний код адаптер не сможет
+    private var portList: List<CdcPortData> = emptyList()
+
+    fun updateData(newPorts: List<CdcPortData>) {
+        portList = newPorts
+
+        // В более сложных случаях имеет смысл использовать DiffUtil.calculateDiff()
+        notifyDataSetChanged()
+    }
+
+    class PortViewHolder(view: ViewGroup) : RecyclerView.ViewHolder(view) {
         val idNumber: TextView = view.findViewById(R.id.idNumber)
         val writeEndpoint: TextView = view.findViewById(R.id.writeEndpoint)
         val readEndpoint: TextView = view.findViewById(R.id.readEndpoint)
     }
 
     // Метод сообщает RecyclerView о том, сколько элементов в списке
-    override fun getItemCount(): Int = arrayList.size
+    override fun getItemCount(): Int = portList.size
 
     // Optional: мы можем использовать стабильные идентификаторы для анимации. Если это нужно,
     // то необходимо полноценно реализовать этот метод
@@ -46,7 +54,7 @@ class CdcPortsAdapter(
      * Это аналог getView() из BaseAdapter-а
      */
     override fun onBindViewHolder(holder: PortViewHolder, position: Int) {
-        val portData = arrayList[position]
+        val portData = portList[position]
 
         // Используем ссылку на ViewHolder для установки отображаемых данных
         holder.idNumber.text = portData.id.toString()

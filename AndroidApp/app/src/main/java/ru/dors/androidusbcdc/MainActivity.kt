@@ -41,8 +41,7 @@ class MainActivity : AppCompatActivity() {
 
     // Параметры, необходимые для создания списка выбора порта
     private lateinit var recyclerView: RecyclerView
-    private var arrayList: ArrayList<CdcPortData> = ArrayList()
-    private var adapter: CdcPortsAdapter? = null
+    private lateinit var adapter: CdcPortsAdapter
 
     // Номер порта, который был выбран пользователем (index). Raspberry Pi Pico предоставляет
     // два порта: REPL и data exchange
@@ -61,7 +60,7 @@ class MainActivity : AppCompatActivity() {
         val dumpView = findViewById<TextView>(R.id.connection_msg)
         dumpView.typeface = Typeface.MONOSPACE
 
-        adapter = CdcPortsAdapter(this, arrayList, { position ->
+        adapter = CdcPortsAdapter(this, { position ->
             // Обработчик выбора пользователем порта/endpoints для обмена данными
             // (функциональная лямбда-функция)
             selectedPortIndex = position
@@ -217,10 +216,8 @@ class MainActivity : AppCompatActivity() {
 
         // Формируем список доступных Endpoints для взаимодействия с микроконтроллером,
         // а затем передаём этот список адаптеру RecyclerView
-        arrayList.clear()
         val ports = usbManager.getAvailablePorts(manager, driver)
-        arrayList.addAll(ports)
-        adapter?.notifyDataSetChanged()
+        adapter.updateData(ports)
     }
 
     /**
