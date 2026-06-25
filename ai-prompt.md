@@ -67,6 +67,8 @@ I have identified four critical areas that require refactoring:
 >
 >Простыми словами: SOC говорит, как делить систему на крупные части, а SRP подсказывает, как проектировать отдельные элементы внутри этих частей.
 
+>Критика книги Роберта Мартина "Clean code": SRP макисмально неопределённый принцип. Применение принципа носит субъективный характер.
+
 💻 Refactored Code
 Due to the scope of changes required (introducing a ViewModel and restructuring class responsibilities), I will introduce two new conceptual files: MainViewModel.kt and UsbManagerWrapper.kt (to encapsulate USB logic).
 
