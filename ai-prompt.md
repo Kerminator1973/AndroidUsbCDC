@@ -186,13 +186,7 @@ class CdcPortsAdapter(
 >- не пересоздавать CdcPortsAdapter при изменении списка
 >- блокировать возможность изменения данных, которые были переданы по ссылке в конструкторе, на дублирование внешнего контейнера: `this.portList = newPorts.toList()`. Это приводит к тому, что внешний контейнер нельзя изменить из реализации CdcPortsAdapter
 >
->Pro: объект CdcPortsAdapter не пересоздаётся, а переиспользуется; внешний список - immutable
->
->Contra: дополнительные расходы на создание списка ссылок, с помощью toList()
->
->Следует заметить, что класс List, в отличие от mutableList не содержит методов для изменения содержимого.
->
->Подсказка кажется достаточно здравой!
+>Если посмотреть на реализацию MainActivity, то подход прекрасен: для подключения к USB CDC в MainActivity нужен только номер интерфейса, и нам не нужно хранить все атрибуты интерфейса именно в MainActivity. Когда мы получаем список доступных интерфейсов от UsbConnectionManager, мы сразу передаём его CdcPortAdapter и забываем об этих данных. Когда пользователь выберет элемент списка, CdcPortAdapter пришлёт индекс интерфейса, который MainActivity использует для подключения к USB CDC. Просто и понятно!
 
 5. UsbManagerWrapper.kt (New File - Encapsulation/State Management)
 This new class encapsulates all raw Android USB calls, making MainActivity significantly cleaner and improving testability by abstracting device interaction away from the UI layer.
