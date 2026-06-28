@@ -309,3 +309,31 @@ editor.apply()
 val prefs =  getSharedPreferences("USB_CDC_PREFS", Context.MODE_PRIVATE)
 prefs.getBoolean(getString(R.string.protocol_type),true)
 ```
+
+## Что такое Context?
+
+Когда мы создаём свой класс, ему может понадобиться доступ к ресурсам или системным службам. В этом случае можно передать Context в конструктор, чтобы класс был самодостаточным и тестируемым. Например:
+
+```java
+class AppPreferences(context: Context) {
+
+    private val prefs: SharedPreferences =
+        context.getSharedPreferences(PRE...
+```
+
+Указывается контекст следующим образом:
+
+```java
+val prefsContext = AppPreferences(context) 
+val speed = if (prefsContext.useDefaultSpeed) 115200 else 921600
+```
+
+Т.е. контекст возникает из `this` внутри Activity, либо `requireContext()` во Fragment. Контекст привязан к жизненному циклу экрана (Activity/фрагмента).
+
+Важные нюансы:
+
+- Избегайте хранить Activity Context в статических полях или долгоживущих объектах. Это частая причина утечек памяти: если Activity уничтожится, а где-то останется ссылка на неё, сборщик мусора не сможет освободить память
+- Для синглтонов и фоновых задач используйте applicationContext. Он живёт столько же, сколько приложение, и не создаёт проблем с жизненным циклом экрана
+- В Fragment лучше использовать `requireContext()` (или context, проверяя на null), а не хранить Context в поле фрагмента надолго
+
+TODO: написать тесты для проверки функционала CdcPortAdapter.
