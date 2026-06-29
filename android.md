@@ -315,10 +315,9 @@ prefs.getBoolean(getString(R.string.protocol_type),true)
 Когда мы создаём свой класс, ему может понадобиться доступ к ресурсам или системным службам. В этом случае можно передать Context в конструктор, чтобы класс был самодостаточным и тестируемым. Например:
 
 ```java
-class AppPreferences(context: Context) {
+class AppPreferences(private val context: Context) {
 
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences(PRE...
+    private val prefs: SharedPreferences = context.getSharedPreferences(PRE...
 ```
 
 Указывается контекст следующим образом:
@@ -336,4 +335,37 @@ val speed = if (prefsContext.useDefaultSpeed) 115200 else 921600
 - Для синглтонов и фоновых задач используйте applicationContext. Он живёт столько же, сколько приложение, и не создаёт проблем с жизненным циклом экрана
 - В Fragment лучше использовать `requireContext()` (или context, проверяя на null), а не хранить Context в поле фрагмента надолго
 
-TODO: написать тесты для проверки функционала CdcPortAdapter.
+## companion object в Kotlin
+
+**companion object** в Kotlin — это объект, объявленный внутри класса с ключевым словом companion, который даёт доступ к своим членам через имя класса (без создания экземпляра). Это ближайший аналог static-членов из Java, но мощнее, потому что это полноценный объект.
+
+Базовый пример:
+
+```java
+class User(val name: String) {
+    companion object {
+        const val MAX_NAME_LENGTH = 50
+
+        fun createAnonymous(): User = User("Anonymous")
+    }
+}
+
+// Использование:
+val maxLen = User.MAX_NAME_LENGTH   // константа
+val user = User.createAnonymous()   // фабричный метод
+```
+
+**Это реальный объект**. companion object — **синглтон**, у него есть тип, он может реализовывать интерфейсы, иметь инициализаторы и т. д.
+
+Можно дать имя. Если не указывать имя, по умолчанию используется Companion:
+
+```java
+class FileUtils {
+    companion object Loader {
+        fun load(path: String): String = "..."
+    }
+}
+// Вызов: FileUtils.Loader.load("file.txt")
+```
+
+В одном классе может быть только один **companion object**.

@@ -12,7 +12,7 @@ import android.content.SharedPreferences
  * обратную совместимость с настройками, сохраненными в предыдущих версиях приложения.
  */
 
-class AppPreferences(context: Context) {
+class AppPreferences(private val context: Context) {
 
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
